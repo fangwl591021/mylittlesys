@@ -1151,6 +1151,7 @@
       <div style="font-size:10px; font-weight:900; color:#64748b; margin-bottom:20px; letter-spacing:0.1em; text-transform:uppercase; text-align:center;">Live Preview V2</div>
 
       <div id="v2-mock-bubble" style="width:100%; background:linear-gradient(88deg, #57142b, #46250c); border-radius:2rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; border:4px solid #1e293b; display:flex; flex-direction:column; position:relative; transition:all 0.3s; min-height: 540px;">
+        <div id="v2-mock-share-badge" style="position:absolute; top:14px; right:14px; z-index:5; background:rgba(255,255,255,0.92); color:#111827; padding:6px 14px; border-radius:999px; font-size:12px; font-weight:900; box-shadow:0 8px 16px rgba(0,0,0,0.16); display:none;">分享</div>
         <div id="v2-mock-full-bg" style="flex:1; display:flex; flex-direction:column; align-items:center; transition:all 0.3s; width: 100%; box-sizing: border-box; padding-top: 20px;">
 
 
@@ -1290,6 +1291,10 @@
 
   function addV2Bar() { v2Bars.push({t:"New Button", u:"https://line.me"}); renderV2BarsUI(); }
 
+  function isV2ShareButton(item) {
+    return String(item && item.t || '').includes('分享');
+  }
+
   function renderV2SocialUI() {
     const list = document.getElementById('v2-social-list'); if(!list) return;
     list.innerHTML = '';
@@ -1345,7 +1350,10 @@
     const tAlign = getEl('v2-f-title-align')?.value || 'start';
     const logo = getEl('v2-f-logo-url')?.value || V2_DEF_DATA.logo;
     const bg = getV2BackgroundConfig();
+    const shareButton = v2Bars.find(isV2ShareButton);
+    const regularBars = v2Bars.filter(b => !isV2ShareButton(b));
     const mockBubble = getEl('v2-mock-bubble');
+    const mockShareBadge = getEl('v2-mock-share-badge');
     const angleLabel = getEl('v2-bg-angle-label');
     if (angleLabel) angleLabel.innerText = bg.angle + '\u00B0';
     if (mockBubble) {
@@ -1353,6 +1361,7 @@
         ? `linear-gradient(${bg.angle}deg, ${bg.startColor}, ${bg.endColor})`
         : bg.startColor;
     }
+    if (mockShareBadge) mockShareBadge.style.display = shareButton ? 'block' : 'none';
 
     // 同步更新左側視覺模擬器
     const mockTitle = getEl('v2-mock-title');
@@ -1366,10 +1375,33 @@
     if(socialCont) socialCont.innerHTML = v2Socials.map(s => `<img src="${V2_ICONS[s.type]}" style="width:40px; height:40px; border-radius:50%;">`).join('');
 
     const barsCont = getEl('v2-mock-bars-container');
-    if(barsCont) barsCont.innerHTML = v2Bars.map(b => `<div style="background:#fff; color:#333; width:100%; text-align:center; padding:10px; border-radius:50px; font-weight:bold; font-size:12px; margin-bottom:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">${b.t}</div>`).join('');
+    if(barsCont) barsCont.innerHTML = regularBars.map(b => `<div style="background:#fff; color:#333; width:100%; text-align:center; padding:10px; border-radius:50px; font-weight:bold; font-size:12px; margin-bottom:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">${b.t}</div>`).join('');
 
     // ★ 構建 100% 吻合您提供的無錯誤 JSON 結構 ★
     let bodyContents = [
+      ...(shareButton ? [{
+        "type": "box",
+        "layout": "vertical",
+        "position": "absolute",
+        "offsetTop": "14px",
+        "offsetEnd": "14px",
+        "backgroundColor": "#FFFFFFE8",
+        "cornerRadius": "100px",
+        "paddingTop": "6px",
+        "paddingBottom": "6px",
+        "paddingStart": "14px",
+        "paddingEnd": "14px",
+        "contents": [
+          {
+            "type": "text",
+            "text": "分享",
+            "size": "xs",
+            "weight": "bold",
+            "color": "#111827"
+          }
+        ],
+        "action": { "type": "uri", "uri": sanitizeUri(shareButton.u) }
+      }] : []),
       {
         "type": "box",
         "layout": "vertical",
@@ -1437,14 +1469,14 @@
       });
     }
 
-    if (v2Bars.length > 0) {
+    if (regularBars.length > 0) {
       bodyContents.push({
         "type": "box",
         "layout": "vertical",
         "spacing": "none",
         "margin": "lg",
         "alignItems": "center",
-        "contents": v2Bars.map(b => ({
+        "contents": regularBars.map(b => ({
           "type": "box",
           "layout": "vertical",
           "backgroundColor": "#ffffff",
@@ -1528,11 +1560,15 @@
       u: item.action && item.action.uri ? item.action.uri : 'https://line.me'
     })) : v2Socials;
 
-    const buttonBox = contents.find(c => c && c.type === 'box' && c.layout === 'vertical' && Array.isArray(c.contents) && c.contents.some(item => item.action && item.contents));
-    v2Bars = buttonBox ? buttonBox.contents.map(item => ({
+    const shareBadge = contents.find(c => c && c.position === 'absolute' && c.action && Array.isArray(c.contents) && c.contents.some(item => item.text === '分享'));
+    const buttonBox = contents.find(c => c && c.type === 'box' && c.layout === 'vertical' && !c.position && Array.isArray(c.contents) && c.contents.some(item => item.action && item.contents));
+    const loadedBars = buttonBox ? buttonBox.contents.map(item => ({
       t: item.contents && item.contents[0] ? item.contents[0].text || 'New Button' : 'New Button',
       u: item.action && item.action.uri ? item.action.uri : 'https://line.me'
-    })) : v2Bars;
+    })) : v2Bars.filter(b => !isV2ShareButton(b));
+    v2Bars = shareBadge
+      ? [{ t: '分享好友', u: shareBadge.action && shareBadge.action.uri ? shareBadge.action.uri : 'https://line.me' }, ...loadedBars]
+      : loadedBars;
 
     renderV2BarsUI();
     renderV2SocialUI();
