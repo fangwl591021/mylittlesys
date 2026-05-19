@@ -3228,17 +3228,35 @@
       await myLittleSysLiffReady;
     }
 
+    function isLineIdTokenExpired(idToken) {
+      try {
+        var payload = JSON.parse(atob(String(idToken).split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        return payload && payload.exp && Date.now() >= ((payload.exp - 60) * 1000);
+      } catch (_err) {
+        return false;
+      }
+    }
+
+    function refreshLineLogin() {
+      try { if (window.liff && liff.isLoggedIn && liff.isLoggedIn()) liff.logout(); } catch (_err) {}
+      liff.login({ redirectUri: window.location.href.split("#")[0] });
+    }
+
     async function loginWithLineAdmin(showErrors) {
       if (currentUser) return;
       try {
         await ensureMyLittleSysLiffReady();
         if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: window.location.href });
+          refreshLineLogin();
           return;
         }
 
         var idToken = liff.getIDToken && liff.getIDToken();
         if (!idToken) throw new Error("無法取得 LINE 登入憑證");
+        if (isLineIdTokenExpired(idToken)) {
+          refreshLineLogin();
+          return;
+        }
         toggleLoader(true);
         var res = await callMyLittleSysRpc("loginLineAdmin", idToken);
         toggleLoader(false);
@@ -3249,7 +3267,12 @@
         }
       } catch (error) {
         toggleLoader(false);
-        if (showErrors) alert("LINE 登入失敗：" + (error && error.message ? error.message : String(error)));
+        var msg = error && error.message ? error.message : String(error);
+        if (/expired/i.test(msg)) {
+          refreshLineLogin();
+          return;
+        }
+        if (showErrors) alert("LINE 登入失敗：" + msg);
         else console.warn("LINE admin login skipped:", error);
       }
     }
@@ -3260,7 +3283,7 @@
         await ensureMyLittleSysLiffReady();
         if (!liff.isLoggedIn()) {
           if (isLiffLaunch() || (liff.isInClient && liff.isInClient())) {
-            liff.login({ redirectUri: window.location.href });
+            refreshLineLogin();
           }
           return;
         }
