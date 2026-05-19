@@ -1964,6 +1964,7 @@
   function setupV4FreeCanvas() {
     if (window.__v4FreeCanvasReady) return;
     window.__v4FreeCanvasReady = true;
+    ensureV4SidePanel();
 
     var bubble = document.getElementById('v4-preview-bubble');
     var header = document.getElementById('v4-preview-header');
@@ -1990,6 +1991,38 @@
     canvas.addEventListener('pointerdown', onV4CanvasPointerDown);
     window.addEventListener('pointermove', onV4CanvasPointerMove);
     window.addEventListener('pointerup', onV4CanvasPointerUp);
+  }
+
+  function ensureV4SidePanel() {
+    var panel = document.getElementById('panel-editor-ui');
+    var editor = document.getElementById('editor-ui');
+    var list = document.getElementById('v4-zones-list');
+    if (!panel || !editor || !list) return;
+
+    panel.classList.remove('workspace-hidden');
+    editor.className = 'flex-1 overflow-y-auto p-5 no-scrollbar';
+    if (!document.getElementById('v4-side-panel')) {
+      editor.innerHTML =
+        '<div id="v4-side-panel" class="h-full flex flex-col">' +
+          '<div class="flex items-center justify-between mb-4">' +
+            '<div><div class="text-xs font-black text-[#54C061] uppercase">透明按鈕座標</div><div id="v4-selected-label" class="text-[10px] font-black text-slate-400 mt-1">未選取熱區</div></div>' +
+            '<div class="flex gap-2">' +
+              '<button onclick="addV4Zone()" class="bg-[#54C061] text-white px-3 py-1.5 rounded-md text-[10px] font-black shadow-sm">新增</button>' +
+              '<button onclick="clearV4Zones()" class="bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-md text-[10px] font-black">清空</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="v4-zone-panel-list" class="flex-1 min-h-0 overflow-y-auto no-scrollbar"></div>' +
+        '</div>';
+    }
+    var panelList = document.getElementById('v4-zone-panel-list');
+    if (panelList && list.parentNode !== panelList) {
+      var oldSection = list.closest('section');
+      if (oldSection) oldSection.style.display = 'none';
+      panelList.appendChild(list);
+      list.style.display = 'flex';
+      list.style.flexDirection = 'column';
+      list.style.gap = '12px';
+    }
   }
 
   function getV4CanvasPoint(event) {
@@ -2099,6 +2132,7 @@
   }
 
   function renderV4ZonesUI() {
+    ensureV4SidePanel();
     var list = document.getElementById('v4-zones-list');
     var selectedLabel = document.getElementById('v4-selected-label');
     if (selectedLabel) selectedLabel.textContent = v4Zones.length ? ('目前選取 ZONE ' + (v4SelectedIndex + 1)) : '未選取熱區';
@@ -2920,6 +2954,10 @@
         var tid = (type==='v1')?'flex-workspace-v1':(type==='v3'?'v3-workspace':(type==='v4'?'v4-workspace':'flex-workspace-v2'));
         var el = document.getElementById(tid); if(el) el.classList.remove('workspace-hidden');
         document.getElementById('flex-tools').classList.remove('workspace-hidden');
+        if (type === 'v4') {
+          document.getElementById('panel-editor-ui').classList.remove('workspace-hidden');
+          if (typeof ensureV4SidePanel === 'function') setTimeout(ensureV4SidePanel, 0);
+        }
       }
     }
 
