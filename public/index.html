@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
@@ -184,6 +185,7 @@
 
         <div id="flex-tools" class="workspace-hidden flex items-center space-x-3">
           <button onclick="doSaveMenu()" class="btn-line px-8 py-2 text-sm font-black uppercase shadow-sm">儲存檔案</button>
+          <button onclick="shareCurrentFlexToLine(this)" class="px-6 py-2 bg-[#06C755] text-white rounded-md text-sm font-black uppercase shadow-sm hover:bg-green-600 transition-all">LINE 分享</button>
           <button onclick="copyJsonText()" class="px-6 py-2 border-2 border-slate-300 rounded-md text-sm font-bold text-slate-600 uppercase hover:bg-slate-50 transition-all">Copy JSON</button>
         </div>
 
@@ -3114,6 +3116,64 @@
       document.execCommand("copy");
       document.body.removeChild(temp);
       showToast("JSON 已複製");
+    }
+
+    var myLittleSysLiffReady = null;
+
+    function getMyLittleSysLiffId() {
+      var params = new URLSearchParams(location.search);
+      return params.get('liffClientId') || params.get('liffId') || '1660923784-6YnGSECs';
+    }
+
+    function buildCurrentFlexShareMessage() {
+      var val = document.getElementById("json-output").value;
+      if (!val) throw new Error("目前沒有可分享的 Flex JSON");
+      var parsed = JSON.parse(val);
+      if (parsed.type === "flex" && parsed.contents) return parsed;
+      var nameEl = document.getElementById("save-filename");
+      var altText = (nameEl && nameEl.value ? nameEl.value : "小系統分享").slice(0, 400);
+      return { type: "flex", altText: altText, contents: parsed };
+    }
+
+    async function ensureMyLittleSysLiffReady() {
+      if (!window.liff) throw new Error("LIFF SDK 尚未載入，請重新整理後再試");
+      if (!myLittleSysLiffReady) {
+        myLittleSysLiffReady = liff.init({ liffId: getMyLittleSysLiffId() });
+      }
+      await myLittleSysLiffReady;
+    }
+
+    async function shareCurrentFlexToLine(shareButton) {
+      try {
+        var flexMsg = buildCurrentFlexShareMessage();
+        if (shareButton) shareButton.disabled = true;
+        await ensureMyLittleSysLiffReady();
+
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href });
+          return;
+        }
+
+        if (liff.isApiAvailable && !liff.isApiAvailable("shareTargetPicker")) {
+          alert("此 LIFF 尚未開啟 Share Target Picker，請到 LINE Developers 開啟並同意條款。");
+          return;
+        }
+
+        var res = await liff.shareTargetPicker([flexMsg]);
+        if (res) showToast("已開啟 LINE 分享");
+      } catch (error) {
+        console.error("LIFF SDK Share Error:", error);
+        var msg = error && error.message ? error.message : String(error);
+        if (msg.includes("not allowed")) {
+          alert("系統分享權限已更新，將重新登入以取得最新權限。");
+          try { liff.logout(); } catch (_err) {}
+          window.location.reload();
+        } else {
+          alert("分享取消或失敗：" + msg);
+        }
+      } finally {
+        if (shareButton) shareButton.disabled = false;
+      }
     }
 
     document.getElementById("img-upload").onchange = function(e) {
