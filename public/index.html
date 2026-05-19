@@ -1193,10 +1193,38 @@
              <input type="text" id="v2-f-logo-url" class="input-field" placeholder="大頭貼/Logo 網址" oninput="generateFlexJson_v2()">
           </section>
 
+          <section style="background:#f8fafc; padding:24px; border-radius:16px; border:2px solid #e2e8f0;">
+             <h3 style="font-size:12px; font-weight:900; color:#54C061; margin-bottom:20px; text-transform:uppercase;">&#50;&#46; &#32972;&#26223;&#33394;&#33287;&#28472;&#23652;</h3>
+             <div class="grid grid-cols-2 gap-4 mb-4">
+                <label class="flex items-center gap-3 bg-white border-2 border-slate-200 rounded-xl p-3 cursor-pointer">
+                  <input type="radio" name="v2-bg-mode" value="solid" onchange="generateFlexJson_v2()">
+                  <span class="text-sm font-black text-slate-700">&#32020;&#33394;&#32972;&#26223;</span>
+                </label>
+                <label class="flex items-center gap-3 bg-white border-2 border-slate-200 rounded-xl p-3 cursor-pointer">
+                  <input type="radio" name="v2-bg-mode" value="gradient" checked onchange="generateFlexJson_v2()">
+                  <span class="text-sm font-black text-slate-700">&#38617;&#33394;&#28472;&#23652;</span>
+                </label>
+             </div>
+             <div class="grid grid-cols-3 gap-4 items-end">
+                <label class="block">
+                  <span class="block text-[10px] font-black text-slate-500 uppercase mb-2">&#32972;&#26223;&#33394; / &#36215;&#22987;&#33394;</span>
+                  <input type="color" id="v2-f-bg-start" value="#57142b" class="w-full h-12 rounded-lg border-2 border-slate-200 bg-white p-1" oninput="generateFlexJson_v2()">
+                </label>
+                <label class="block">
+                  <span class="block text-[10px] font-black text-slate-500 uppercase mb-2">&#32080;&#26463;&#33394;</span>
+                  <input type="color" id="v2-f-bg-end" value="#46250c" class="w-full h-12 rounded-lg border-2 border-slate-200 bg-white p-1" oninput="generateFlexJson_v2()">
+                </label>
+                <label class="block">
+                  <span class="block text-[10px] font-black text-slate-500 uppercase mb-2">&#35282;&#24230; <b id="v2-bg-angle-label">88&deg;</b></span>
+                  <input type="range" id="v2-f-bg-angle" min="0" max="360" value="88" class="w-full accent-[#54C061]" oninput="generateFlexJson_v2()">
+                </label>
+             </div>
+          </section>
+
 
           <section>
             <div class="flex justify-between items-center mb-4">
-               <h3 style="font-size:12px; font-weight:900; color:#54C061; text-transform:uppercase;">2. 社群連結圖示</h3>
+               <h3 style="font-size:12px; font-weight:900; color:#54C061; text-transform:uppercase;">&#51;&#46; &#31038;&#32676;&#22294;&#31034;</h3>
                <button onclick="addV2Social()" class="bg-slate-800 text-white px-3 py-1 rounded text-[10px] shadow-sm">＋ 新增</button>
             </div>
             <div id="v2-social-list" class="grid grid-cols-2 gap-4"></div>
@@ -1205,7 +1233,7 @@
 
           <section style="padding-bottom:120px;">
             <div class="flex justify-between items-center mb-4">
-               <h3 style="font-size:12px; font-weight:900; color:#54C061; text-transform:uppercase;">3. 底部連結按鈕</h3>
+               <h3 style="font-size:12px; font-weight:900; color:#54C061; text-transform:uppercase;">&#52;&#46; &#25353;&#37397;&#36899;&#32080;</h3>
                <button onclick="addV2Bar()" class="bg-[#54C061] text-white px-3 py-1 rounded text-[10px] shadow-sm">＋ 新增</button>
             </div>
             <div id="v2-bars-list" class="space-y-3"></div>
@@ -1283,12 +1311,48 @@
 
   function addV2Social() { v2Socials.push({type:'LINE', u:'https://line.me'}); renderV2SocialUI(); }
 
+
+  function getV2BackgroundConfig() {
+    const mode = document.querySelector('input[name="v2-bg-mode"]:checked')?.value || 'gradient';
+    const startColor = document.getElementById('v2-f-bg-start')?.value || '#57142b';
+    const endColor = document.getElementById('v2-f-bg-end')?.value || '#46250c';
+    const angle = Math.max(0, Math.min(360, parseInt(document.getElementById('v2-f-bg-angle')?.value || '88', 10)));
+    return { mode, startColor, endColor, angle };
+  }
+
+  function applyV2BackgroundToForm(background) {
+    if (!background) return;
+    const isGradient = background.type === 'linearGradient';
+    const mode = isGradient ? 'gradient' : 'solid';
+    const modeEl = document.querySelector(`input[name="v2-bg-mode"][value="${mode}"]`);
+    if (modeEl) modeEl.checked = true;
+    const start = document.getElementById('v2-f-bg-start');
+    const end = document.getElementById('v2-f-bg-end');
+    const angle = document.getElementById('v2-f-bg-angle');
+    if (start) start.value = background.startColor || background.color || '#57142b';
+    if (end) end.value = background.endColor || background.startColor || background.color || '#46250c';
+    if (angle) angle.value = parseInt(String(background.angle || '88').replace('deg', ''), 10) || 88;
+  }
+
+  function getV2IconTypeByUrl(url) {
+    return Object.keys(V2_ICONS).find(k => V2_ICONS[k] === url) || 'LINE';
+  }
+
   function generateFlexJson_v2() {
     const getEl = (id) => document.getElementById(id);
     const title = getEl('v2-f-title')?.value || V2_DEF_DATA.title;
     const desc = getEl('v2-f-desc')?.value || V2_DEF_DATA.desc;
     const tAlign = getEl('v2-f-title-align')?.value || 'start';
     const logo = getEl('v2-f-logo-url')?.value || V2_DEF_DATA.logo;
+    const bg = getV2BackgroundConfig();
+    const mockBubble = getEl('v2-mock-bubble');
+    const angleLabel = getEl('v2-bg-angle-label');
+    if (angleLabel) angleLabel.innerText = bg.angle + '\u00B0';
+    if (mockBubble) {
+      mockBubble.style.background = bg.mode === 'gradient'
+        ? `linear-gradient(${bg.angle}deg, ${bg.startColor}, ${bg.endColor})`
+        : bg.startColor;
+    }
 
     // 同步更新左側視覺模擬器
     const mockTitle = getEl('v2-mock-title');
@@ -1421,12 +1485,19 @@
         "paddingAll": "0px",
         "contents": bodyContents,
         "alignItems": "center",
-        "background": {
-          "type": "linearGradient",
-          "angle": "88deg",
-          "startColor": "#57142b",
-          "endColor": "#46250c"
-        }
+        "background": bg.mode === "gradient"
+          ? {
+            "type": "linearGradient",
+            "angle": bg.angle + "deg",
+            "startColor": bg.startColor,
+            "endColor": bg.endColor
+          }
+          : {
+            "type": "linearGradient",
+            "angle": "0deg",
+            "startColor": bg.startColor,
+            "endColor": bg.startColor
+          }
       }
     };
 
@@ -1435,6 +1506,43 @@
   }
 
   // 確保載入時初次渲染一次
+
+  window.loadFlexMenuV2_Data = function(name, json) {
+    if (document.getElementById('save-filename')) document.getElementById('save-filename').value = name || '';
+    const body = json && json.body ? json.body : {};
+    const contents = Array.isArray(body.contents) ? body.contents : [];
+    applyV2BackgroundToForm(body.background || (body.backgroundColor ? { type: 'solid', color: body.backgroundColor } : null));
+
+    const imageBox = contents.find(c => c && c.type === 'box' && Array.isArray(c.contents) && c.contents[0] && c.contents[0].type === 'image');
+    const textBox = contents.find(c => c && c.type === 'box' && Array.isArray(c.contents) && c.contents.some(item => item.type === 'text'));
+    const image = imageBox && imageBox.contents ? imageBox.contents.find(item => item.type === 'image') : null;
+    const texts = textBox && textBox.contents ? textBox.contents.filter(item => item.type === 'text') : [];
+    if (document.getElementById('v2-f-logo-url') && image && image.url) document.getElementById('v2-f-logo-url').value = image.url;
+    if (document.getElementById('v2-f-title') && texts[0]) document.getElementById('v2-f-title').value = texts[0].text || '';
+    if (document.getElementById('v2-f-desc') && texts[1]) document.getElementById('v2-f-desc').value = texts[1].text || '';
+    if (document.getElementById('v2-f-title-align') && texts[0]) document.getElementById('v2-f-title-align').value = texts[0].align || 'start';
+
+    const socialBox = contents.find(c => c && c.type === 'box' && c.layout === 'horizontal' && Array.isArray(c.contents) && c.contents.some(item => item.type === 'image' && item.action));
+    v2Socials = socialBox ? socialBox.contents.map(item => ({
+      type: getV2IconTypeByUrl(item.url),
+      u: item.action && item.action.uri ? item.action.uri : 'https://line.me'
+    })) : v2Socials;
+
+    const buttonBox = contents.find(c => c && c.type === 'box' && c.layout === 'vertical' && Array.isArray(c.contents) && c.contents.some(item => item.action && item.contents));
+    v2Bars = buttonBox ? buttonBox.contents.map(item => ({
+      t: item.contents && item.contents[0] ? item.contents[0].text || 'New Button' : 'New Button',
+      u: item.action && item.action.uri ? item.action.uri : 'https://line.me'
+    })) : v2Bars;
+
+    renderV2BarsUI();
+    renderV2SocialUI();
+  };
+
+  window.loadFlexTemplate_v2 = function() {
+    renderV2BarsUI();
+    renderV2SocialUI();
+  };
+
   setTimeout(() => {
     const descField = document.getElementById('v2-f-desc');
     if(descField && !descField.value) descField.value = V2_DEF_DATA.desc;
