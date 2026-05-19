@@ -8,6 +8,8 @@ const JSON_HEADERS = {
 const memoryStore = globalThis.__MYLITTLESYS_STORE__ || new Map();
 globalThis.__MYLITTLESYS_STORE__ = memoryStore;
 
+const PUBLIC_WORKER_ORIGIN = "https://mylittlesys.fangwl591021.workers.dev";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -22,6 +24,11 @@ export default {
 
     if (url.pathname === "/calendar") {
       return renderCalendar(url);
+    }
+
+    if (url.pathname.startsWith("/api/image/")) {
+      const id = decodeURIComponent(url.pathname.slice("/api/image/".length));
+      return serveStoredImage(env, id);
     }
 
     if (url.pathname.startsWith("/api/rpc/")) {
@@ -124,7 +131,8 @@ const rpcHandlers = {
     const all = [
       ...(await getProjects(env, "flex_v1")),
       ...(await getProjects(env, "flex_v2")),
-      ...(await getProjects(env, "flex_v3"))
+      ...(await getProjects(env, "flex_v3")),
+      ...(await getProjects(env, "flex_v4"))
     ];
     return filterProjects(all, username);
   },
@@ -134,6 +142,7 @@ const rpcHandlers = {
   saveFlexV1: async (env, data) => saveProject(env, "flex_v1", data),
   saveFlexV2: async (env, data) => saveProject(env, "flex_v2", data),
   saveFlexV3: async (env, data) => saveProject(env, "flex_v3", data),
+  saveFlexV4: async (env, data) => saveProject(env, "flex_v4", data),
 
   uploadImageToDrive: async (env, base64, filename) => {
     const id = crypto.randomUUID();
@@ -143,7 +152,7 @@ const rpcHandlers = {
       base64,
       createdAt: new Date().toISOString()
     });
-    return { success: true, url: `kv://${id}`, id };
+    return { success: true, url: `${env.PUBLIC_ORIGIN || PUBLIC_WORKER_ORIGIN}/api/image/${id}`, id };
   },
 
   getMenuImageBase64: async (env, imageRef) => {
@@ -151,6 +160,11 @@ const rpcHandlers = {
     if (String(imageRef).startsWith("data:")) return imageRef;
     if (String(imageRef).startsWith("kv://")) {
       const image = await getRecord(env, `image:${String(imageRef).slice(5)}`, null);
+      return image?.base64 || "";
+    }
+    const imageUrlMatch = String(imageRef).match(/\/api\/image\/([^/?#]+)/);
+    if (imageUrlMatch) {
+      const image = await getRecord(env, `image:${decodeURIComponent(imageUrlMatch[1])}`, null);
       return image?.base64 || "";
     }
     return imageRef;
@@ -333,6 +347,21 @@ async function setRecord(env, key, value) {
 
 function storageMode(env) {
   return env.MYLITTLESYS_KV ? "kv" : "memory";
+}
+
+async function serveStoredImage(env, id) {
+  if (!id) return new Response("Image not found", { status: 404 });
+  const image = await getRecord(env, `image:${id}`, null);
+  if (!image?.base64) return new Response("Image not found", { status: 404 });
+
+  const parsed = dataUriToBytes(image.base64);
+  return new Response(parsed.bytes, {
+    headers: {
+      "content-type": parsed.contentType,
+      "cache-control": "public, max-age=31536000, immutable",
+      "access-control-allow-origin": "*"
+    }
+  });
 }
 
 function dataUriToBytes(dataUri) {

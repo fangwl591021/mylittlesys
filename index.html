@@ -255,7 +255,7 @@
         <h2 class="text-3xl font-black text-slate-800 mb-2 text-center uppercase tracking-tighter">選擇 FLEX 版型</h2>
         <p class="text-slate-400 text-sm font-bold mb-12 uppercase tracking-widest">請點擊下方區塊開始編輯</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-6xl w-full">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-7xl w-full">
           <div onclick="createNewFlex('v1')" class="template-card">
             <div class="icon-box"><svg class="w-8 h-8 text-[#54C061]" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm10 2a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1V9a1 1 0 00-1-1h-2z"></path></svg></div>
             <h3 class="text-xl font-black text-slate-800 mb-2">影片導購 (V1)</h3>
@@ -275,6 +275,13 @@
             <h3 class="text-xl font-black text-slate-800 mb-2">商品目錄 (V3)</h3>
             <p class="text-slate-400 text-xs font-bold uppercase tracking-tighter mb-6 text-center leading-relaxed">列表式商品陳列規格<br>支援多項購買連結與價格</p>
             <span class="text-[10px] font-black text-[#54C061] uppercase border-b-2 border-[#54C061] pb-1">立即建立 →</span>
+          </div>
+
+          <div onclick="createNewFlex('v4')" class="template-card">
+            <div class="icon-box"><svg class="w-8 h-8 text-[#54C061]" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm2 3h8v4H6V6zm0 6h3v2H6v-2zm5 0h3v2h-3v-2z"></path></svg></div>
+            <h3 class="text-xl font-black text-slate-800 mb-2">影音圖文選單 (V4)</h3>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-tighter mb-6 text-center leading-relaxed">上方影片，下方圖片<br>用座標自由放置透明按鈕</p>
+            <span class="text-[10px] font-black text-[#54C061] uppercase border-b-2 border-[#54C061] pb-1">建立 V4</span>
           </div>
         </div>
       </div>
@@ -1656,7 +1663,300 @@
   window.loadFlexMenuV3_Data = function(n, j) { if(document.getElementById('save-filename')) document.getElementById('save-filename').value = n; renderV3ItemsUI(); renderV2SocialUI_V3(); };
   window.loadFlexTemplate_v3 = function() { renderV3ItemsUI(); renderV2SocialUI_V3(); };
   setTimeout(loadFlexTemplate_v3, 300);
-</script>       <div id="capture-workspace" class="workspace-hidden flex-1 w-full h-full overflow-y-auto bg-gray-50 pb-20">
+</script>
+
+<div id="v4-workspace" class="workspace-hidden flex h-full w-full bg-white">
+  <div class="flex h-full w-full">
+    <div style="width:390px; background:#eef2f7; border-right:1px solid #e5e7eb; padding:20px; display:flex; flex-direction:column; align-items:center; overflow-y:auto; flex-shrink:0;" class="no-scrollbar">
+      <div style="font-size:10px; font-weight:900; color:#64748b; margin-bottom:15px; letter-spacing:0.1em; text-transform:uppercase;">Live Preview V4</div>
+      <div id="v4-preview-bubble" style="width:330px; background:#fff; border-radius:18px; box-shadow:0 24px 44px -16px rgba(15,23,42,.35); overflow:hidden; border:4px solid #1e293b;">
+        <div id="v4-preview-header" style="padding:10px; background:#eb5a09; color:#fff; text-align:right; font-size:12px; font-weight:900;">點擊影片開啟完整影音</div>
+        <div style="position:relative; background:#111; aspect-ratio:800/450;">
+          <img id="v4-preview-video" src="https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png" style="width:100%; height:100%; object-fit:cover; display:block;">
+          <div style="position:absolute; inset:0; display:grid; place-items:center; color:white; font-size:13px; font-weight:900; background:rgba(0,0,0,.16);">VIDEO</div>
+        </div>
+        <div id="v4-preview-body" style="position:relative; width:100%; background:#f8fafc; overflow:hidden;">
+          <img id="v4-preview-base" src="https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png" style="width:100%; height:auto; display:block;">
+          <div id="v4-preview-zones" style="position:absolute; inset:0;"></div>
+        </div>
+      </div>
+      <p style="font-size:10px; color:#64748b; line-height:1.6; margin-top:14px; text-align:center; max-width:320px;">座標以原圖寬度 2500px 為基準，X/Y/W/H 會自動換算成 LINE Flex 的 px。</p>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-10 bg-white no-scrollbar">
+      <div style="max-width:760px; margin:0 auto; padding-bottom:120px;">
+        <h2 style="font-size:24px; font-weight:900; color:#1e293b; margin-bottom:4px;">影音圖文選單 (V4)</h2>
+        <p style="font-size:11px; color:#94a3b8; font-weight:bold; text-transform:uppercase; margin-bottom:26px; border-bottom:1px solid #F1F5F9; padding-bottom:10px;">Video Hero + Coordinate Hot Zones</p>
+
+        <section style="background:#f8fafc; padding:20px; border-radius:12px; border:2px solid #e2e8f0; margin-bottom:22px;">
+          <h4 style="font-size:12px; font-weight:900; color:#54C061; margin-bottom:15px; text-transform:uppercase;">1. 影片區塊</h4>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 block mb-1">上方提示文字</label>
+              <input id="v4-header-text" class="input-field" value="點擊影片開啟完整影音" oninput="generateFlexJson_v4()">
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 block mb-1">提示色</label>
+              <input id="v4-header-color" type="color" value="#eb5a09" style="width:100%; height:38px; cursor:pointer;" oninput="generateFlexJson_v4()">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 block mb-1">影片 MP4 URL</label>
+              <input id="v4-video-url" class="input-field font-mono text-xs" value="https://example.com/video.mp4" oninput="generateFlexJson_v4()">
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 block mb-1">影片預覽圖 URL</label>
+              <input id="v4-preview-url" class="input-field font-mono text-xs" value="https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png" oninput="generateFlexJson_v4()">
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 block mb-1">影片比例</label>
+            <input id="v4-video-ratio" class="input-field" value="800:450" oninput="generateFlexJson_v4()">
+          </div>
+        </section>
+
+        <section style="background:#f8fafc; padding:20px; border-radius:12px; border:2px solid #e2e8f0; margin-bottom:22px;">
+          <h4 style="font-size:12px; font-weight:900; color:#54C061; margin-bottom:15px; text-transform:uppercase;">2. 下方底圖</h4>
+          <div class="grid grid-cols-[1fr_150px] gap-4 mb-4">
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 block mb-1">圖片 URL</label>
+              <input id="v4-base-image" class="input-field font-mono text-xs" value="https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png" oninput="generateFlexJson_v4()">
+            </div>
+            <label class="btn-line py-2.5 flex items-center justify-center cursor-pointer text-xs font-bold mt-5">上傳底圖<input type="file" style="display:none" accept="image/*" onchange="uploadV4Image(this, 'v4-base-image')"></label>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 block mb-1">圖片比例</label>
+              <input id="v4-base-ratio" class="input-field" value="2500:1686" oninput="generateFlexJson_v4()">
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 block mb-1">座標基準寬度</label>
+              <input id="v4-design-width" class="input-field" type="number" value="2500" min="1" oninput="generateFlexJson_v4()">
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h4 style="font-size:12px; font-weight:900; color:#54C061; text-transform:uppercase;">3. 透明按鈕座標</h4>
+            <div class="flex gap-2">
+              <button onclick="addV4Zone()" class="bg-[#54C061] text-white px-4 py-1.5 rounded-md text-[10px] font-black shadow-sm">新增按鈕</button>
+              <button onclick="clearV4Zones()" class="bg-white border border-rose-200 text-rose-500 px-4 py-1.5 rounded-md text-[10px] font-black">清空</button>
+            </div>
+          </div>
+          <div id="v4-zones-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var v4Zones = [
+    { label: '活動報名', uri: 'https://www.folkstown.com/%E6%B4%BB%E5%8B%95%E5%A0%B1%E5%90%8D', x: 1660, y: 60, w: 520, h: 520 },
+    { label: '官方網站', uri: 'https://folkstown.mystrikingly.com/', x: 80, y: 760, w: 520, h: 520 },
+    { label: 'Facebook', uri: 'https://www.facebook.com/FOLKSTOWN', x: 850, y: 760, w: 520, h: 520 },
+    { label: 'LINE', uri: 'https://liff.line.me/2007221311-O4n6wkV6/index.php/linecard_12/5054/', x: 1660, y: 760, w: 520, h: 520 }
+  ];
+  const V4_FLEX_WIDTH = 390;
+
+  function v4Val(id, fallback) {
+    var el = document.getElementById(id);
+    return el && el.value !== '' ? el.value : fallback;
+  }
+
+  function v4RatioParts(value) {
+    var parts = String(value || '1:1').split(':').map(Number);
+    if (!parts[0] || !parts[1]) return [1, 1];
+    return parts;
+  }
+
+  function v4Scale() {
+    var designWidth = Number(v4Val('v4-design-width', 2500)) || 2500;
+    return V4_FLEX_WIDTH / designWidth;
+  }
+
+  function uploadV4Image(input, targetId) {
+    if (!input.files || !input.files[0]) return;
+    if (typeof toggleLoader === 'function') toggleLoader(true);
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      google.script.run.withSuccessHandler(function(res) {
+        if (typeof toggleLoader === 'function') toggleLoader(false);
+        if (res && res.success) {
+          var el = document.getElementById(targetId);
+          if (el) el.value = res.url;
+          generateFlexJson_v4();
+        } else {
+          alert((res && res.msg) || '圖片上傳失敗');
+        }
+      }).uploadImageToDrive(e.target.result, input.files[0].name);
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  function addV4Zone() {
+    v4Zones.push({ label: 'action', uri: 'https://line.me', x: 100, y: 100, w: 500, h: 260 });
+    renderV4ZonesUI();
+  }
+
+  function clearV4Zones() {
+    if (!confirm('確定清空全部透明按鈕？')) return;
+    v4Zones = [];
+    renderV4ZonesUI();
+  }
+
+  function removeV4Zone(idx) {
+    v4Zones.splice(idx, 1);
+    renderV4ZonesUI();
+  }
+
+  function renderV4ZonesUI() {
+    var list = document.getElementById('v4-zones-list');
+    if (!list) return;
+    list.innerHTML = '';
+    v4Zones.forEach(function(zone, idx) {
+      var div = document.createElement('div');
+      div.className = 'p-4 bg-slate-50 border border-slate-200 rounded-xl shadow-sm';
+      div.innerHTML =
+        '<div class="flex justify-between items-center mb-3"><span class="text-[10px] font-black text-slate-400">ZONE '+(idx+1)+'</span><button onclick="removeV4Zone('+idx+')" class="text-rose-500 text-xs font-bold">刪除</button></div>' +
+        '<div class="grid grid-cols-2 gap-3 mb-3">' +
+        '<div><label class="text-[9px] font-bold text-slate-500">按鈕名稱</label><input class="input-field text-xs" value="'+escapeV4(zone.label)+'" oninput="v4Zones['+idx+'].label=this.value;generateFlexJson_v4()"></div>' +
+        '<div><label class="text-[9px] font-bold text-slate-500">連結 URL</label><input class="input-field text-xs font-mono" value="'+escapeV4(zone.uri)+'" oninput="v4Zones['+idx+'].uri=this.value;generateFlexJson_v4()"></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-4 gap-3">' +
+        ['x','y','w','h'].map(function(k) { return '<div><label class="text-[9px] font-bold text-slate-500">'+k.toUpperCase()+'</label><input type="number" class="input-field text-xs" value="'+Number(zone[k] || 0)+'" oninput="v4Zones['+idx+'].'+k+'=Number(this.value)||0;generateFlexJson_v4()"></div>'; }).join('') +
+        '</div>';
+      list.appendChild(div);
+    });
+    generateFlexJson_v4();
+  }
+
+  function escapeV4(value) {
+    return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function generateFlexJson_v4() {
+    var headerText = v4Val('v4-header-text', '點擊影片開啟完整影音');
+    var headerColor = v4Val('v4-header-color', '#eb5a09');
+    var videoUrl = v4Val('v4-video-url', 'https://example.com/video.mp4');
+    var previewUrl = v4Val('v4-preview-url', 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png');
+    var videoRatio = v4Val('v4-video-ratio', '800:450');
+    var baseImage = v4Val('v4-base-image', 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png');
+    var baseRatio = v4Val('v4-base-ratio', '2500:1686');
+    var scale = v4Scale();
+    var baseParts = v4RatioParts(baseRatio);
+    var previewHeight = Math.round(330 * baseParts[1] / baseParts[0]);
+
+    var header = document.getElementById('v4-preview-header');
+    if (header) { header.textContent = headerText; header.style.backgroundColor = headerColor; }
+    var video = document.getElementById('v4-preview-video');
+    if (video) video.src = previewUrl;
+    var base = document.getElementById('v4-preview-base');
+    if (base) base.src = baseImage;
+    var body = document.getElementById('v4-preview-body');
+    if (body) body.style.minHeight = previewHeight + 'px';
+    var zoneLayer = document.getElementById('v4-preview-zones');
+    if (zoneLayer) {
+      zoneLayer.innerHTML = '';
+      v4Zones.forEach(function(z, idx) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:absolute; box-sizing:border-box; border:2px solid rgba(84,192,97,.9); background:rgba(84,192,97,.14); color:#166534; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; text-align:center; overflow:hidden;';
+        d.style.left = (z.x * 330 / (Number(v4Val('v4-design-width', 2500)) || 2500)) + 'px';
+        d.style.top = (z.y * 330 / (Number(v4Val('v4-design-width', 2500)) || 2500)) + 'px';
+        d.style.width = (z.w * 330 / (Number(v4Val('v4-design-width', 2500)) || 2500)) + 'px';
+        d.style.height = (z.h * 330 / (Number(v4Val('v4-design-width', 2500)) || 2500)) + 'px';
+        d.textContent = z.label || ('ZONE ' + (idx + 1));
+        zoneLayer.appendChild(d);
+      });
+    }
+
+    var contents = [
+      { type: 'image', url: baseImage, size: 'full', aspectRatio: baseRatio, aspectMode: 'cover' }
+    ].concat(v4Zones.map(function(z) {
+      return {
+        type: 'box',
+        layout: 'vertical',
+        position: 'absolute',
+        offsetStart: Math.round(z.x * scale) + 'px',
+        offsetTop: Math.round(z.y * scale) + 'px',
+        width: Math.max(1, Math.round(z.w * scale)) + 'px',
+        height: Math.max(1, Math.round(z.h * scale)) + 'px',
+        action: { type: 'uri', label: z.label || 'action', uri: sanitizeUri(z.uri || 'https://line.me') },
+        contents: [{ type: 'filler' }]
+      };
+    }));
+
+    var flex = {
+      type: 'bubble',
+      size: 'giga',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [{ type: 'text', text: headerText, size: 'sm', weight: 'bold', align: 'end', color: '#FFFFFF' }],
+        paddingAll: '10px',
+        backgroundColor: headerColor
+      },
+      hero: {
+        type: 'video',
+        url: videoUrl,
+        previewUrl: previewUrl,
+        altContent: { type: 'image', size: 'full', aspectRatio: videoRatio, aspectMode: 'cover', url: previewUrl },
+        aspectRatio: videoRatio
+      },
+      body: { type: 'box', layout: 'vertical', contents: contents, paddingAll: '0px' }
+    };
+    var out = document.getElementById('json-output');
+    if (out) out.value = JSON.stringify(flex, null, 2);
+  }
+
+  window.loadFlexTemplate_v4 = function() {
+    if (document.getElementById('save-filename') && !document.getElementById('save-filename').value) document.getElementById('save-filename').value = '';
+    renderV4ZonesUI();
+  };
+
+  window.loadFlexMenuV4_Data = function(n, j) {
+    if (document.getElementById('save-filename')) document.getElementById('save-filename').value = n || '';
+    if (j && j.header) {
+      var headerText = document.getElementById('v4-header-text');
+      var headerColor = document.getElementById('v4-header-color');
+      if (headerText && j.header.contents && j.header.contents[0]) headerText.value = j.header.contents[0].text || headerText.value;
+      if (headerColor) headerColor.value = j.header.backgroundColor || headerColor.value;
+    }
+    if (j && j.hero) {
+      var videoUrl = document.getElementById('v4-video-url');
+      var previewUrl = document.getElementById('v4-preview-url');
+      var ratio = document.getElementById('v4-video-ratio');
+      if (videoUrl) videoUrl.value = j.hero.url || videoUrl.value;
+      if (previewUrl) previewUrl.value = j.hero.previewUrl || previewUrl.value;
+      if (ratio) ratio.value = j.hero.aspectRatio || ratio.value;
+    }
+    if (j && j.body && Array.isArray(j.body.contents)) {
+      var base = j.body.contents.find(function(c) { return c.type === 'image'; });
+      if (base) {
+        var baseInput = document.getElementById('v4-base-image');
+        var baseRatio = document.getElementById('v4-base-ratio');
+        if (baseInput) baseInput.value = base.url || baseInput.value;
+        if (baseRatio) baseRatio.value = base.aspectRatio || baseRatio.value;
+      }
+      var inv = (Number(v4Val('v4-design-width', 2500)) || 2500) / V4_FLEX_WIDTH;
+      v4Zones = j.body.contents.filter(function(c) { return c.type === 'box' && c.position === 'absolute' && c.action; }).map(function(c) {
+        return {
+          label: c.action.label || 'action',
+          uri: c.action.uri || 'https://line.me',
+          x: Math.round(parseFloat(c.offsetStart || 0) * inv),
+          y: Math.round(parseFloat(c.offsetTop || 0) * inv),
+          w: Math.round(parseFloat(c.width || 1) * inv),
+          h: Math.round(parseFloat(c.height || 1) * inv)
+        };
+      });
+    }
+    renderV4ZonesUI();
+  };
+</script>
+
+<div id="capture-workspace" class="workspace-hidden flex-1 w-full h-full overflow-y-auto bg-gray-50 pb-20">
   <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mt-10">
     <div class="p-6 md:p-8">
       <div class="flex items-center space-x-3 mb-6">
@@ -2332,7 +2632,7 @@
           else if (pStr.includes('3')) openCalendarPop();
           else if (pStr.includes('4')) openCaptureWorkspace();
           else {
-            var ids = ['template-selector', 'menu-workspace', 'flex-workspace-v1', 'flex-workspace-v2', 'v3-workspace', 'capture-workspace', 'admin-workspace'];
+            var ids = ['template-selector', 'menu-workspace', 'flex-workspace-v1', 'flex-workspace-v2', 'v3-workspace', 'v4-workspace', 'capture-workspace', 'admin-workspace'];
             ids.forEach(id => { var el = document.getElementById(id); if(el) el.classList.add('workspace-hidden'); });
           }
         } else {
@@ -2343,7 +2643,7 @@
 
     function openWorkspace(type) {
       currentWorkspace = type;
-      var ids = ['template-selector', 'menu-workspace', 'flex-workspace-v1', 'flex-workspace-v2', 'v3-workspace', 'capture-workspace', 'admin-workspace'];
+      var ids = ['template-selector', 'menu-workspace', 'flex-workspace-v1', 'flex-workspace-v2', 'v3-workspace', 'v4-workspace', 'capture-workspace', 'admin-workspace'];
       ids.forEach(id => { var el = document.getElementById(id); if(el) el.classList.add('workspace-hidden'); });
       document.getElementById('richmenu-tools').classList.add('workspace-hidden');
       document.getElementById('flex-tools').classList.add('workspace-hidden');
@@ -2368,7 +2668,7 @@
         document.getElementById('richmenu-tools').classList.remove('workspace-hidden');
         document.getElementById('panel-editor-ui').classList.remove('workspace-hidden');
       } else if (type.startsWith('v')) {
-        var tid = (type==='v1')?'flex-workspace-v1':(type==='v3'?'v3-workspace':'flex-workspace-v2');
+        var tid = (type==='v1')?'flex-workspace-v1':(type==='v3'?'v3-workspace':(type==='v4'?'v4-workspace':'flex-workspace-v2'));
         var el = document.getElementById(tid); if(el) el.classList.remove('workspace-hidden');
         document.getElementById('flex-tools').classList.remove('workspace-hidden');
       }
@@ -2462,7 +2762,7 @@
       } else {
         var json = JSON.parse(f.json);
         document.getElementById('json-output').value = JSON.stringify(json, null, 2);
-        var mode = (f.sheet === 'flex_v3') ? 'v3' : ((f.sheet === 'flex_v2') ? 'v2' : 'v1');
+        var mode = (f.sheet === 'flex_v4') ? 'v4' : ((f.sheet === 'flex_v3') ? 'v3' : ((f.sheet === 'flex_v2') ? 'v2' : 'v1'));
         openWorkspace(mode);
         setTimeout(function() { if (window['loadFlexMenu'+mode.toUpperCase()+'_Data']) window['loadFlexMenu'+mode.toUpperCase()+'_Data'](f.filename, json); }, 300);
       }
@@ -2491,7 +2791,7 @@
       var data = { username: currentUser.username, company: "Company", filename: name, json: jsonText, image: (currentWorkspace === "richmenu" && window.MenuModule.isImageChanged) ? window.MenuModule.currentDriveUrl : "" };
       google.script.run.withSuccessHandler(function(res) {
         toggleLoader(false); if(res.success) { showToast("儲存成功"); renderProjectList(currentCat); } else alert(res.msg);
-      })[currentWorkspace === "richmenu" ? "saveRichMenu" : (currentWorkspace === "v1" ? "saveFlexV1" : (currentWorkspace === "v3" ? "saveFlexV3" : "saveFlexV2"))](data);
+      })[currentWorkspace === "richmenu" ? "saveRichMenu" : (currentWorkspace === "v1" ? "saveFlexV1" : (currentWorkspace === "v3" ? "saveFlexV3" : (currentWorkspace === "v4" ? "saveFlexV4" : "saveFlexV2")))](data);
     }
 
     function doUploadRichMenu() {
