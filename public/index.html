@@ -3122,7 +3122,8 @@
 
     function getMyLittleSysLiffId() {
       var params = new URLSearchParams(location.search);
-      return params.get('liffClientId') || params.get('liffId') || '1660923784-69AM2Je4';
+      var candidate = params.get('liffId') || params.get('liffClientId') || '';
+      return /^\d+-[A-Za-z0-9]+$/.test(candidate) ? candidate : '1660923784-69AM2Je4';
     }
 
     function buildCurrentFlexShareMessage() {
