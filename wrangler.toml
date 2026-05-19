@@ -14,3 +14,7 @@ ADMIN_PASS = "admin123"
 [[kv_namespaces]]
 binding = "MYLITTLESYS_KV"
 id = "5f1c3409ce0a470aa9910b891297442f"
+
+[[r2_buckets]]
+binding = "MYLITTLESYS_R2"
+bucket_name = "mylittlesys-images"

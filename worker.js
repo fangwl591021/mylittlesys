@@ -209,13 +209,35 @@ const rpcHandlers = {
 
   uploadImageToDrive: async (env, base64, filename) => {
     const id = crypto.randomUUID();
+    const parsed = dataUriToBytes(base64);
+    const ext = extensionFromContentType(parsed.contentType, filename);
+    const r2Key = `images/${id}.${ext}`;
+
+    if (env.MYLITTLESYS_R2) {
+      await env.MYLITTLESYS_R2.put(r2Key, parsed.bytes, {
+        httpMetadata: { contentType: parsed.contentType },
+        customMetadata: { id, filename: filename || "upload.png" }
+      });
+      await setRecord(env, `image:${id}`, {
+        id,
+        filename: filename || "upload.png",
+        storage: "r2",
+        key: r2Key,
+        contentType: parsed.contentType,
+        createdAt: new Date().toISOString()
+      });
+      return { success: true, url: `${env.PUBLIC_ORIGIN || PUBLIC_WORKER_ORIGIN}/api/image/${id}`, id, storage: "r2" };
+    }
+
     await setRecord(env, `image:${id}`, {
       id,
       filename: filename || "upload.png",
+      storage: "kv",
+      contentType: parsed.contentType,
       base64,
       createdAt: new Date().toISOString()
     });
-    return { success: true, url: `${env.PUBLIC_ORIGIN || PUBLIC_WORKER_ORIGIN}/api/image/${id}`, id };
+    return { success: true, url: `${env.PUBLIC_ORIGIN || PUBLIC_WORKER_ORIGIN}/api/image/${id}`, id, storage: "kv" };
   },
 
   getMenuImageBase64: async (env, imageRef) => {
@@ -223,12 +245,12 @@ const rpcHandlers = {
     if (String(imageRef).startsWith("data:")) return imageRef;
     if (String(imageRef).startsWith("kv://")) {
       const image = await getRecord(env, `image:${String(imageRef).slice(5)}`, null);
-      return image?.base64 || "";
+      return image ? imageRecordToDataUri(env, image) : "";
     }
     const imageUrlMatch = String(imageRef).match(/\/api\/image\/([^/?#]+)/);
     if (imageUrlMatch) {
       const image = await getRecord(env, `image:${decodeURIComponent(imageUrlMatch[1])}`, null);
-      return image?.base64 || "";
+      return image ? imageRecordToDataUri(env, image) : "";
     }
     return imageRef;
   },
@@ -432,14 +454,29 @@ async function setRecord(env, key, value) {
 }
 
 function storageMode(env) {
+  if (env.MYLITTLESYS_KV && env.MYLITTLESYS_R2) return "kv+r2";
   return env.MYLITTLESYS_KV ? "kv" : "memory";
 }
 
 async function serveStoredImage(env, id) {
   if (!id) return new Response("Image not found", { status: 404 });
   const image = await getRecord(env, `image:${id}`, null);
-  if (!image?.base64) return new Response("Image not found", { status: 404 });
+  if (!image) return new Response("Image not found", { status: 404 });
 
+  if (image.storage === "r2" && image.key) {
+    if (!env.MYLITTLESYS_R2) return new Response("Image storage unavailable", { status: 503 });
+    const object = await env.MYLITTLESYS_R2.get(image.key);
+    if (!object) return new Response("Image not found", { status: 404 });
+    return new Response(object.body, {
+      headers: {
+        "content-type": object.httpMetadata?.contentType || image.contentType || "application/octet-stream",
+        "cache-control": "public, max-age=31536000, immutable",
+        "access-control-allow-origin": "*"
+      }
+    });
+  }
+
+  if (!image.base64) return new Response("Image not found", { status: 404 });
   const parsed = dataUriToBytes(image.base64);
   return new Response(parsed.bytes, {
     headers: {
@@ -450,6 +487,16 @@ async function serveStoredImage(env, id) {
   });
 }
 
+async function imageRecordToDataUri(env, image) {
+  if (image.base64) return image.base64;
+  if (image.storage !== "r2" || !image.key || !env.MYLITTLESYS_R2) return "";
+  const object = await env.MYLITTLESYS_R2.get(image.key);
+  if (!object) return "";
+  const contentType = object.httpMetadata?.contentType || image.contentType || "application/octet-stream";
+  const bytes = new Uint8Array(await object.arrayBuffer());
+  return `data:${contentType};base64,${bytesToBase64(bytes)}`;
+}
+
 function dataUriToBytes(dataUri) {
   const match = String(dataUri || "").match(/^data:([^;]+);base64,(.+)$/);
   if (!match) throw new Error("圖片格式必須是 data URI base64");
@@ -457,6 +504,28 @@ function dataUriToBytes(dataUri) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return { contentType: match[1], bytes };
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function extensionFromContentType(contentType, filename) {
+  const ext = String(filename || "").split(".").pop()?.toLowerCase();
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return ext === "jpeg" ? "jpg" : ext;
+  const map = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp"
+  };
+  return map[contentType] || "bin";
 }
 
 async function fetchText(targetUrl) {
