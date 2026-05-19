@@ -81,7 +81,9 @@
     }
   </script>
   <script>
-    window.MYLITTLESYS_API_BASE = "";
+    window.MYLITTLESYS_API_BASE = location.hostname.endsWith("github.io")
+      ? "https://mylittlesys.fangwl591021.workers.dev"
+      : "";
     window.google = window.google || {};
     window.google.script = window.google.script || {};
     window.google.script.run = new Proxy({
