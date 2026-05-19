@@ -143,6 +143,7 @@
         <input type="text" id="login-user" class="input-field" placeholder="帳號">
         <input type="password" id="login-pass" class="input-field" placeholder="密碼">
         <button onclick="doLogin()" class="w-full btn-line py-4 text-xl shadow-lg">進入系統</button>
+        <button type="button" onclick="loginWithLineAdmin(true)" class="w-full py-3 text-base font-black rounded-md border-2 border-[#06C755] text-[#06C755] bg-white hover:bg-green-50 transition shadow-sm">LINE 登入</button>
       </div>
     </section>
   </div>
@@ -3227,6 +3228,32 @@
       await myLittleSysLiffReady;
     }
 
+    async function loginWithLineAdmin(showErrors) {
+      if (currentUser) return;
+      try {
+        await ensureMyLittleSysLiffReady();
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href });
+          return;
+        }
+
+        var idToken = liff.getIDToken && liff.getIDToken();
+        if (!idToken) throw new Error("無法取得 LINE 登入憑證");
+        toggleLoader(true);
+        var res = await callMyLittleSysRpc("loginLineAdmin", idToken);
+        toggleLoader(false);
+        if (res && res.success) {
+          enterSystem(res.user);
+        } else if (showErrors) {
+          alert((res && res.msg) || "LINE 登入失敗");
+        }
+      } catch (error) {
+        toggleLoader(false);
+        if (showErrors) alert("LINE 登入失敗：" + (error && error.message ? error.message : String(error)));
+        else console.warn("LINE admin login skipped:", error);
+      }
+    }
+
     async function tryLineAdminLogin() {
       if (currentUser || getIncomingShareId() || !window.liff) return;
       try {
@@ -3237,17 +3264,8 @@
           }
           return;
         }
-
-        var idToken = liff.getIDToken && liff.getIDToken();
-        if (!idToken) return;
-        toggleLoader(true);
-        var res = await callMyLittleSysRpc("loginLineAdmin", idToken);
-        toggleLoader(false);
-        if (res && res.success) {
-          enterSystem(res.user);
-        }
+        await loginWithLineAdmin(false);
       } catch (error) {
-        toggleLoader(false);
         console.warn("LINE admin login skipped:", error);
       }
     }
