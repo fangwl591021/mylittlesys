@@ -1,0 +1,17 @@
+name = "mylittlesys"
+main = "worker.js"
+compatibility_date = "2026-05-19"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[vars]
+ADMIN_USER = "admin"
+ADMIN_PASS = "admin123"
+
+# For persistent storage, create a KV namespace and uncomment this binding:
+# [[kv_namespaces]]
+# binding = "MYLITTLESYS_KV"
+# id = "replace-with-kv-namespace-id"
