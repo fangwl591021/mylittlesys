@@ -29,8 +29,8 @@ Set `ADMIN_USER` and `ADMIN_PASS` in Cloudflare Worker variables before producti
 
 ## Storage
 
-The Worker can run immediately without bindings, using per-isolate memory storage for first deployment checks.
-For production persistence, create a Cloudflare KV namespace and bind it as `MYLITTLESYS_KV` in `wrangler.toml`.
+The Worker is bound to Cloudflare KV namespace `littlesys` as `MYLITTLESYS_KV`.
+Login users, saved rich menus, Flex projects, and uploaded image records are stored there.
 
 ## Deploy
 
