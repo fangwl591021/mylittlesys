@@ -1956,6 +1956,255 @@
   };
 </script>
 
+<script>
+  v4Zones = [];
+  var v4SelectedIndex = 0;
+  var v4PointerState = null;
+
+  function setupV4FreeCanvas() {
+    if (window.__v4FreeCanvasReady) return;
+    window.__v4FreeCanvasReady = true;
+
+    var bubble = document.getElementById('v4-preview-bubble');
+    var header = document.getElementById('v4-preview-header');
+    var video = header ? header.nextElementSibling : null;
+    if (bubble && bubble.parentNode) {
+      bubble.parentNode.style.width = '500px';
+      bubble.parentNode.style.alignItems = 'center';
+    }
+    if (bubble && header && video) {
+      var videoPanel = document.createElement('div');
+      videoPanel.id = 'v4-video-floating-panel';
+      videoPanel.style.cssText = 'width:330px;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #dbe3ed;box-shadow:0 10px 24px -20px rgba(15,23,42,.45);';
+      bubble.parentNode.insertBefore(videoPanel, bubble);
+      videoPanel.appendChild(header);
+      videoPanel.appendChild(video);
+      bubble.style.width = '430px';
+      bubble.style.borderRadius = '12px';
+    }
+
+    var canvas = document.getElementById('v4-preview-body');
+    if (!canvas) return;
+    canvas.style.cursor = 'crosshair';
+    canvas.style.touchAction = 'none';
+    canvas.addEventListener('pointerdown', onV4CanvasPointerDown);
+    window.addEventListener('pointermove', onV4CanvasPointerMove);
+    window.addEventListener('pointerup', onV4CanvasPointerUp);
+  }
+
+  function getV4CanvasPoint(event) {
+    var canvas = document.getElementById('v4-preview-body');
+    var rect = canvas.getBoundingClientRect();
+    var designWidth = Number(v4Val('v4-design-width', 2500)) || 2500;
+    var scale = designWidth / rect.width;
+    return {
+      x: Math.max(0, Math.round((event.clientX - rect.left) * scale)),
+      y: Math.max(0, Math.round((event.clientY - rect.top) * scale)),
+      rect: rect,
+      scale: scale
+    };
+  }
+
+  function onV4CanvasPointerDown(event) {
+    var canvas = document.getElementById('v4-preview-body');
+    if (!canvas || !event.target.closest('#v4-preview-body')) return;
+    event.preventDefault();
+    canvas.setPointerCapture && canvas.setPointerCapture(event.pointerId);
+    var point = getV4CanvasPoint(event);
+    var zoneEl = event.target.closest('.v4-zone-box');
+    if (zoneEl) {
+      var idx = Number(zoneEl.getAttribute('data-v4-index'));
+      selectV4Zone(idx);
+      v4PointerState = {
+        mode: 'move',
+        index: idx,
+        startX: point.x,
+        startY: point.y,
+        original: Object.assign({}, v4Zones[idx])
+      };
+      return;
+    }
+
+    v4Zones.push({ label: 'action', uri: 'https://line.me', x: point.x, y: point.y, w: 1, h: 1 });
+    v4SelectedIndex = v4Zones.length - 1;
+    v4PointerState = { mode: 'draw', index: v4SelectedIndex, startX: point.x, startY: point.y };
+    generateFlexJson_v4();
+  }
+
+  function onV4CanvasPointerMove(event) {
+    if (!v4PointerState) return;
+    var point = getV4CanvasPoint(event);
+    var zone = v4Zones[v4PointerState.index];
+    if (!zone) return;
+
+    if (v4PointerState.mode === 'draw') {
+      var x1 = Math.min(v4PointerState.startX, point.x);
+      var y1 = Math.min(v4PointerState.startY, point.y);
+      var x2 = Math.max(v4PointerState.startX, point.x);
+      var y2 = Math.max(v4PointerState.startY, point.y);
+      zone.x = x1;
+      zone.y = y1;
+      zone.w = Math.max(1, x2 - x1);
+      zone.h = Math.max(1, y2 - y1);
+    } else if (v4PointerState.mode === 'move') {
+      zone.x = Math.max(0, Math.round(v4PointerState.original.x + point.x - v4PointerState.startX));
+      zone.y = Math.max(0, Math.round(v4PointerState.original.y + point.y - v4PointerState.startY));
+    }
+    generateFlexJson_v4();
+  }
+
+  function onV4CanvasPointerUp() {
+    if (!v4PointerState) return;
+    var zone = v4Zones[v4PointerState.index];
+    if (zone && v4PointerState.mode === 'draw' && (zone.w < 20 || zone.h < 20)) {
+      v4Zones.splice(v4PointerState.index, 1);
+      v4SelectedIndex = Math.max(0, v4Zones.length - 1);
+    }
+    v4PointerState = null;
+    renderV4ZonesUI();
+  }
+
+  function selectV4Zone(idx) {
+    v4SelectedIndex = Math.max(0, Math.min(idx, v4Zones.length - 1));
+    renderV4ZonesUI();
+  }
+
+  function addV4Zone() {
+    var designWidth = Number(v4Val('v4-design-width', 2500)) || 2500;
+    var baseParts = v4RatioParts(v4Val('v4-base-ratio', '2500:1686'));
+    var designHeight = Math.round(designWidth * baseParts[1] / baseParts[0]);
+    v4Zones.push({
+      label: 'action',
+      uri: 'https://line.me',
+      x: Math.round(designWidth * 0.1),
+      y: Math.round(designHeight * 0.1),
+      w: Math.round(designWidth * 0.22),
+      h: Math.round(designHeight * 0.16)
+    });
+    v4SelectedIndex = v4Zones.length - 1;
+    renderV4ZonesUI();
+  }
+
+  function clearV4Zones() {
+    if (!confirm('確定清空全部熱區？')) return;
+    v4Zones = [];
+    v4SelectedIndex = 0;
+    renderV4ZonesUI();
+  }
+
+  function removeV4Zone(idx) {
+    v4Zones.splice(idx, 1);
+    v4SelectedIndex = Math.max(0, Math.min(v4SelectedIndex, v4Zones.length - 1));
+    renderV4ZonesUI();
+  }
+
+  function renderV4ZonesUI() {
+    var list = document.getElementById('v4-zones-list');
+    var selectedLabel = document.getElementById('v4-selected-label');
+    if (selectedLabel) selectedLabel.textContent = v4Zones.length ? ('目前選取 ZONE ' + (v4SelectedIndex + 1)) : '未選取熱區';
+    if (!list) return;
+    list.innerHTML = '';
+    v4Zones.forEach(function(zone, idx) {
+      var div = document.createElement('div');
+      div.className = 'p-4 border rounded-xl shadow-sm ' + (idx === v4SelectedIndex ? 'bg-green-50 border-[#54C061]' : 'bg-slate-50 border-slate-200');
+      div.innerHTML =
+        '<div class="flex justify-between items-center mb-3"><button onclick="selectV4Zone('+idx+')" class="text-[10px] font-black '+(idx === v4SelectedIndex ? 'text-[#54C061]' : 'text-slate-400')+'">ZONE '+(idx+1)+'</button><button onclick="removeV4Zone('+idx+')" class="text-rose-500 text-xs font-bold">刪除</button></div>' +
+        '<div class="grid grid-cols-2 gap-3 mb-3">' +
+        '<div><label class="text-[9px] font-bold text-slate-500">按鈕名稱</label><input class="input-field text-xs" value="'+escapeV4(zone.label)+'" oninput="v4Zones['+idx+'].label=this.value;generateFlexJson_v4()"></div>' +
+        '<div><label class="text-[9px] font-bold text-slate-500">連結 URL</label><input class="input-field text-xs font-mono" value="'+escapeV4(zone.uri)+'" oninput="v4Zones['+idx+'].uri=this.value;generateFlexJson_v4()"></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-4 gap-3">' +
+        ['x','y','w','h'].map(function(k) { return '<div><label class="text-[9px] font-bold text-slate-500">'+k.toUpperCase()+'</label><input type="number" class="input-field text-xs" value="'+Number(zone[k] || 0)+'" oninput="v4Zones['+idx+'].'+k+'=Number(this.value)||0;generateFlexJson_v4()"></div>'; }).join('') +
+        '</div>';
+      list.appendChild(div);
+    });
+    generateFlexJson_v4();
+  }
+
+  function generateFlexJson_v4() {
+    setupV4FreeCanvas();
+    var headerText = v4Val('v4-header-text', '點擊影片開啟完整影音');
+    var headerColor = v4Val('v4-header-color', '#eb5a09');
+    var videoUrl = v4Val('v4-video-url', 'https://example.com/video.mp4');
+    var previewUrl = v4Val('v4-preview-url', 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png');
+    var videoRatio = v4Val('v4-video-ratio', '800:450');
+    var baseImage = v4Val('v4-base-image', 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png');
+    var baseRatio = v4Val('v4-base-ratio', '2500:1686');
+    var designWidth = Number(v4Val('v4-design-width', 2500)) || 2500;
+    var scale = V4_FLEX_WIDTH / designWidth;
+    var baseParts = v4RatioParts(baseRatio);
+
+    var header = document.getElementById('v4-preview-header');
+    if (header) { header.textContent = headerText; header.style.backgroundColor = headerColor; }
+    var video = document.getElementById('v4-preview-video');
+    if (video) video.src = previewUrl;
+    var base = document.getElementById('v4-preview-base');
+    if (base) base.src = baseImage;
+    var body = document.getElementById('v4-preview-body');
+    var canvasWidth = body ? (body.clientWidth || 430) : 430;
+    if (body) body.style.minHeight = Math.round(canvasWidth * baseParts[1] / baseParts[0]) + 'px';
+    var zoneLayer = document.getElementById('v4-preview-zones');
+    if (zoneLayer) {
+      zoneLayer.innerHTML = '';
+      v4Zones.forEach(function(z, idx) {
+        var d = document.createElement('div');
+        d.className = 'v4-zone-box';
+        d.setAttribute('data-v4-index', String(idx));
+        d.style.cssText = 'position:absolute; box-sizing:border-box; border:2px solid '+(idx === v4SelectedIndex ? '#16a34a' : 'rgba(84,192,97,.75)')+'; background:'+(idx === v4SelectedIndex ? 'rgba(84,192,97,.22)' : 'rgba(84,192,97,.10)')+'; color:#166534; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; text-align:center; overflow:hidden; cursor:move; user-select:none;';
+        d.style.left = (z.x * canvasWidth / designWidth) + 'px';
+        d.style.top = (z.y * canvasWidth / designWidth) + 'px';
+        d.style.width = (z.w * canvasWidth / designWidth) + 'px';
+        d.style.height = (z.h * canvasWidth / designWidth) + 'px';
+        d.textContent = z.label || ('ZONE ' + (idx + 1));
+        zoneLayer.appendChild(d);
+      });
+    }
+
+    var contents = [
+      { type: 'image', url: baseImage, size: 'full', aspectRatio: baseRatio, aspectMode: 'cover' }
+    ].concat(v4Zones.map(function(z) {
+      return {
+        type: 'box',
+        layout: 'vertical',
+        position: 'absolute',
+        offsetStart: Math.round(z.x * scale) + 'px',
+        offsetTop: Math.round(z.y * scale) + 'px',
+        width: Math.max(1, Math.round(z.w * scale)) + 'px',
+        height: Math.max(1, Math.round(z.h * scale)) + 'px',
+        action: { type: 'uri', label: z.label || 'action', uri: sanitizeUri(z.uri || 'https://line.me') },
+        contents: [{ type: 'filler' }]
+      };
+    }));
+
+    var flex = {
+      type: 'bubble',
+      size: 'giga',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [{ type: 'text', text: headerText, size: 'sm', weight: 'bold', align: 'end', color: '#FFFFFF' }],
+        paddingAll: '10px',
+        backgroundColor: headerColor
+      },
+      hero: {
+        type: 'video',
+        url: videoUrl,
+        previewUrl: previewUrl,
+        altContent: { type: 'image', size: 'full', aspectRatio: videoRatio, aspectMode: 'cover', url: previewUrl },
+        aspectRatio: videoRatio
+      },
+      body: { type: 'box', layout: 'vertical', contents: contents, paddingAll: '0px' }
+    };
+    var out = document.getElementById('json-output');
+    if (out) out.value = JSON.stringify(flex, null, 2);
+  }
+
+  window.loadFlexTemplate_v4 = function() {
+    setupV4FreeCanvas();
+    renderV4ZonesUI();
+  };
+</script>
+
 <div id="capture-workspace" class="workspace-hidden flex-1 w-full h-full overflow-y-auto bg-gray-50 pb-20">
   <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mt-10">
     <div class="p-6 md:p-8">
