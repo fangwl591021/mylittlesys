@@ -3136,6 +3136,74 @@
       return { type: "flex", altText: altText, contents: parsed };
     }
 
+    function callMyLittleSysRpc(method) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return fetch(window.MYLITTLESYS_API_BASE + "/api/rpc/" + method, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ args: args })
+      }).then(function(res) {
+        return res.json().then(function(body) {
+          if (!res.ok) throw new Error(body && body.error ? body.error : "API request failed");
+          return body.result;
+        });
+      });
+    }
+
+    function cloneForShare(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function addShareUrlToFlexMessage(message, shareUrl) {
+      var next = cloneForShare(message);
+      if (next.type !== "flex" || !next.contents) return next;
+      addShareUrlToFlexContainer(next.contents, shareUrl);
+      return next;
+    }
+
+    function addShareUrlToFlexContainer(container, shareUrl) {
+      if (!container) return;
+      if (container.type === "carousel" && Array.isArray(container.contents)) {
+        container.contents.forEach(function(bubble) { addShareButtonToBubble(bubble, shareUrl); });
+        return;
+      }
+      if (container.type === "bubble") addShareButtonToBubble(container, shareUrl);
+    }
+
+    function addShareButtonToBubble(bubble, shareUrl) {
+      if (!bubble || bubble.type !== "bubble") return;
+      var button = {
+        type: "button",
+        style: "primary",
+        color: "#06C755",
+        height: "sm",
+        action: { type: "uri", label: "轉傳分享", uri: shareUrl }
+      };
+      if (!bubble.footer || bubble.footer.type !== "box") {
+        bubble.footer = { type: "box", layout: "vertical", spacing: "sm", contents: [button], paddingAll: "12px" };
+        return;
+      }
+      bubble.footer.contents = Array.isArray(bubble.footer.contents) ? bubble.footer.contents : [];
+      var exists = bubble.footer.contents.some(function(item) {
+        return item && item.action && item.action.uri === shareUrl;
+      });
+      if (!exists) bubble.footer.contents.push(button);
+    }
+
+    function getIncomingShareId() {
+      var params = new URLSearchParams(location.search);
+      var id = params.get("shareId");
+      if (id) return id;
+      var state = params.get("liff.state") || params.get("state") || "";
+      try {
+        var decoded = decodeURIComponent(state);
+        var stateParams = new URLSearchParams(decoded.replace(/^\?/, ""));
+        return stateParams.get("shareId") || "";
+      } catch (_err) {
+        return "";
+      }
+    }
+
     async function ensureMyLittleSysLiffReady() {
       if (!window.liff) throw new Error("LIFF SDK 尚未載入，請重新整理後再試");
       if (!myLittleSysLiffReady) {
@@ -3148,6 +3216,12 @@
       try {
         var flexMsg = buildCurrentFlexShareMessage();
         if (shareButton) shareButton.disabled = true;
+        var shareRecord = await callMyLittleSysRpc("createFlexShareLink", flexMsg, {
+          title: flexMsg.altText || "小系統分享",
+          liffId: getMyLittleSysLiffId()
+        });
+        if (!shareRecord || !shareRecord.success) throw new Error((shareRecord && shareRecord.msg) || "分享網址產生失敗");
+        flexMsg = addShareUrlToFlexMessage(flexMsg, shareRecord.url);
         await ensureMyLittleSysLiffReady();
 
         if (!liff.isLoggedIn()) {
@@ -3176,6 +3250,34 @@
         if (shareButton) shareButton.disabled = false;
       }
     }
+
+    async function shareStoredFlexFromUrl() {
+      var shareId = getIncomingShareId();
+      if (!shareId) return;
+      try {
+        toggleLoader(true);
+        var loaded = await callMyLittleSysRpc("getFlexShare", shareId);
+        if (!loaded || !loaded.success || !loaded.data || !loaded.data.message) {
+          throw new Error((loaded && loaded.msg) || "分享資料不存在");
+        }
+        await ensureMyLittleSysLiffReady();
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href });
+          return;
+        }
+        var shareUrl = loaded.data.liffUrl || loaded.data.webUrl || window.location.href;
+        var message = addShareUrlToFlexMessage(loaded.data.message, shareUrl);
+        var res = await liff.shareTargetPicker([message]);
+        toggleLoader(false);
+        if (res) showToast("已開啟 LINE 分享");
+      } catch (error) {
+        toggleLoader(false);
+        console.error("Share URL Error:", error);
+        alert("分享網址開啟失敗：" + (error && error.message ? error.message : String(error)));
+      }
+    }
+
+    setTimeout(shareStoredFlexFromUrl, 300);
 
     document.getElementById("img-upload").onchange = function(e) {
       var f = e.target.files[0]; if(!f || !window.MenuModule) return;

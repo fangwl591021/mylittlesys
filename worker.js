@@ -9,6 +9,7 @@ const memoryStore = globalThis.__MYLITTLESYS_STORE__ || new Map();
 globalThis.__MYLITTLESYS_STORE__ = memoryStore;
 
 const PUBLIC_WORKER_ORIGIN = "https://mylittlesys.fangwl591021.workers.dev";
+const SHARE_LIFF_ID = "1660923784-69AM2Je4";
 
 export default {
   async fetch(request, env) {
@@ -29,6 +30,11 @@ export default {
     if (url.pathname.startsWith("/api/image/")) {
       const id = decodeURIComponent(url.pathname.slice("/api/image/".length));
       return serveStoredImage(env, id);
+    }
+
+    if (url.pathname.startsWith("/share/")) {
+      const id = decodeURIComponent(url.pathname.slice("/share/".length));
+      return renderShareRedirect(id);
     }
 
     if (url.pathname.startsWith("/api/rpc/")) {
@@ -143,6 +149,32 @@ const rpcHandlers = {
   saveFlexV2: async (env, data) => saveProject(env, "flex_v2", data),
   saveFlexV3: async (env, data) => saveProject(env, "flex_v3", data),
   saveFlexV4: async (env, data) => saveProject(env, "flex_v4", data),
+
+  createFlexShareLink: async (env, message, meta = {}) => {
+    if (!message || message.type !== "flex" || !message.contents) {
+      return { success: false, msg: "Invalid Flex message" };
+    }
+    const id = crypto.randomUUID();
+    const origin = env.PUBLIC_ORIGIN || PUBLIC_WORKER_ORIGIN;
+    const liffId = meta.liffId || SHARE_LIFF_ID;
+    const webUrl = `${origin}/share/${id}`;
+    const liffUrl = `https://liff.line.me/${encodeURIComponent(liffId)}?shareId=${encodeURIComponent(id)}`;
+    await setRecord(env, `share:${id}`, {
+      id,
+      message,
+      title: meta.title || message.altText || "小系統分享",
+      webUrl,
+      liffUrl,
+      createdAt: new Date().toISOString()
+    });
+    return { success: true, id, url: liffUrl, webUrl, liffUrl };
+  },
+
+  getFlexShare: async (env, id) => {
+    const share = await getRecord(env, `share:${String(id || "")}`, null);
+    if (!share) return { success: false, msg: "Share not found" };
+    return { success: true, data: share };
+  },
 
   uploadImageToDrive: async (env, base64, filename) => {
     const id = crypto.randomUUID();
@@ -422,6 +454,36 @@ function decodeHtml(value) {
     .replaceAll("&amp;", "&")
     .replaceAll("&quot;", '"')
     .replaceAll("&#39;", "'");
+}
+
+function renderShareRedirect(id) {
+  const liffUrl = `https://liff.line.me/${SHARE_LIFF_ID}?shareId=${encodeURIComponent(id || "")}`;
+  return new Response(`<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>小系統分享</title>
+  <meta http-equiv="refresh" content="0;url=${escapeAttr(liffUrl)}">
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, "Noto Sans TC", sans-serif; background: #f8fafc; color: #0f172a; }
+    a { color: #06c755; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <main>
+    <p>正在開啟 LINE 分享...</p>
+    <p><a href="${escapeAttr(liffUrl)}">如果沒有自動開啟，請點這裡</a></p>
+  </main>
+</body>
+</html>`, { headers: { "content-type": "text/html; charset=utf-8" } });
+}
+
+function escapeAttr(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;");
 }
 
 function renderCalendar(url) {
