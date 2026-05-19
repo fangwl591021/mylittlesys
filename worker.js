@@ -93,7 +93,7 @@ const rpcHandlers = {
 
   getAllUsers: async (env) => {
     const users = await getUsers(env);
-    return users.map(({ password, ...user }) => ({ ...user, password: "" }));
+    return { success: true, data: users.map(toAdminUser) };
   },
 
   saveUserData: async (env, userData) => {
@@ -246,6 +246,23 @@ function filterProjects(projects, username) {
   return projects.filter((item) => item.username === username);
 }
 
+function toAdminUser(user) {
+  return {
+    company: user.company || "",
+    name: user.name || user.username || user.account || "",
+    phone: user.phone || "",
+    account: user.account || user.username || "",
+    username: user.username || user.account || "",
+    password: user.password || "",
+    status: user.status || "active",
+    permissions: user.permissions || "",
+    rmQuota: user.rmQuota || "1",
+    flexQuota: user.flexQuota || "3",
+    expireDate: user.expireDate || "",
+    regDate: user.regDate || ""
+  };
+}
+
 async function getUsers(env) {
   const configuredUser = env.ADMIN_USER || "admin";
   const configuredPass = env.ADMIN_PASS || "admin123";
@@ -281,13 +298,20 @@ async function canBootstrapAdmin(env, users) {
 }
 
 function normalizeUser(user) {
+  const account = String(user.account || user.username || "").trim();
   return {
-    username: String(user.username || "").trim(),
+    username: account,
+    account,
     password: String(user.password || ""),
     name: String(user.name || user.username || ""),
+    company: String(user.company || ""),
+    phone: String(user.phone || ""),
+    status: String(user.status || "active"),
     permissions: String(user.permissions || "12"),
     rmQuota: String(user.rmQuota || user.richMenuQuota || "10"),
-    flexQuota: String(user.flexQuota || "20")
+    flexQuota: String(user.flexQuota || "20"),
+    expireDate: String(user.expireDate || ""),
+    regDate: user.regDate || new Date().toISOString().slice(0, 10)
   };
 }
 
