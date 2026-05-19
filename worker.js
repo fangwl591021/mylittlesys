@@ -64,9 +64,29 @@ const rpcHandlers = {
   runMeToAuthorizeDrive: async () => ({ success: true }),
 
   loginUser: async (env, username, password) => {
+    username = String(username || "").trim();
+    password = String(password || "");
+    if (!username || !password) return { success: false, msg: "請輸入帳號與密碼" };
+
     const users = await getUsers(env);
     const user = users.find((item) => item.username === username && item.password === password);
-    if (!user) return { success: false, msg: "帳號或密碼錯誤" };
+    if (!user) {
+      const canBootstrap = await canBootstrapAdmin(env, users);
+      if (!canBootstrap) return { success: false, msg: "帳號或密碼錯誤" };
+
+      const bootstrapped = normalizeUser({
+        username,
+        password,
+        name: username,
+        permissions: "12345",
+        rmQuota: "∞",
+        flexQuota: "∞",
+        status: "active"
+      });
+      await setRecord(env, "users", [bootstrapped]);
+      const { password: _password, ...publicUser } = bootstrapped;
+      return { success: true, user: publicUser, bootstrapped: true };
+    }
     const { password: _password, ...publicUser } = user;
     return { success: true, user: publicUser };
   },
@@ -249,6 +269,15 @@ async function getUsers(env) {
       flexQuota: "20"
     })
   ];
+}
+
+async function canBootstrapAdmin(env, users) {
+  if (env.MYLITTLESYS_KV) {
+    const storedUsers = await env.MYLITTLESYS_KV.get("users", "json");
+    return !storedUsers;
+  }
+  const defaultNames = new Set(["admin", "demo"]);
+  return users.every((user) => defaultNames.has(user.username));
 }
 
 function normalizeUser(user) {
