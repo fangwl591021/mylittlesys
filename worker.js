@@ -10,6 +10,11 @@ globalThis.__MYLITTLESYS_STORE__ = memoryStore;
 
 const PUBLIC_WORKER_ORIGIN = "https://mylittlesys.fangwl591021.workers.dev";
 const SHARE_LIFF_ID = "1660923784-69AM2Je4";
+const LINE_CHANNEL_ID = "1660923784";
+const ADMIN_LINE_USER_IDS = new Set([
+  "Ue9a59cf9b2969ec78b6bfdc2a4cfca08",
+  "U050397a077bef628b317b0bbedeb2187"
+]);
 
 export default {
   async fetch(request, env) {
@@ -102,6 +107,32 @@ const rpcHandlers = {
     }
     const { password: _password, ...publicUser } = user;
     return { success: true, user: publicUser };
+  },
+
+  loginLineAdmin: async (_env, idToken) => {
+    const profile = await verifyLineIdToken(idToken);
+    const lineUserId = String(profile.sub || "");
+    if (!ADMIN_LINE_USER_IDS.has(lineUserId)) {
+      return { success: false, msg: "此 LINE 帳號沒有系統管理員權限" };
+    }
+
+    return {
+      success: true,
+      user: {
+        username: "admin",
+        account: "admin",
+        name: profile.name || "LINE Admin",
+        company: "小系統",
+        phone: "",
+        status: "active",
+        permissions: "12345",
+        rmQuota: "∞",
+        flexQuota: "∞",
+        expireDate: "",
+        regDate: new Date().toISOString().slice(0, 10),
+        lineUserId
+      }
+    };
   },
 
   getAllUsers: async (env) => {
@@ -341,6 +372,29 @@ async function canBootstrapAdmin(env, users) {
   }
   const defaultNames = new Set(["admin", "demo"]);
   return users.every((user) => defaultNames.has(user.username));
+}
+
+async function verifyLineIdToken(idToken) {
+  idToken = String(idToken || "").trim();
+  if (!idToken) throw new Error("LINE idToken is required");
+
+  const form = new URLSearchParams();
+  form.set("id_token", idToken);
+  form.set("client_id", LINE_CHANNEL_ID);
+
+  const res = await fetch("https://api.line.me/oauth2/v2.1/verify", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: form.toString()
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error_description || body.error || "LINE idToken verify failed");
+  }
+  if (String(body.aud || "") !== LINE_CHANNEL_ID) {
+    throw new Error("LINE idToken audience mismatch");
+  }
+  return body;
 }
 
 function normalizeUser(user) {

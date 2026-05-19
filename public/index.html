@@ -2900,29 +2900,33 @@
       showToast("網址已複製！");
     }
 
+    function enterSystem(user) {
+      currentUser = user;
+      document.getElementById('auth-layer').classList.add('workspace-hidden');
+      document.getElementById('main-app').classList.remove('hidden');
+      document.getElementById('user-info').innerText = currentUser.name;
+
+      applyPermissions(currentUser.permissions);
+
+      var pStr = String(currentUser.permissions || "");
+      if (pStr.includes('5')) openAdminWorkspace();
+      else if (pStr.includes('1')) openWorkspace('richmenu');
+      else if (pStr.includes('2')) openWorkspace('selector');
+      else if (pStr.includes('3')) openCalendarPop();
+      else if (pStr.includes('4')) openCaptureWorkspace();
+      else {
+        var ids = ['template-selector', 'menu-workspace', 'flex-workspace-v1', 'flex-workspace-v2', 'v3-workspace', 'v4-workspace', 'capture-workspace', 'admin-workspace'];
+        ids.forEach(id => { var el = document.getElementById(id); if(el) el.classList.add('workspace-hidden'); });
+      }
+    }
+
     function doLogin() {
       var u = document.getElementById('login-user').value, p = document.getElementById('login-pass').value; if(!u || !p) return;
       toggleLoader(true);
       google.script.run.withSuccessHandler(function(res) {
         toggleLoader(false);
         if (res.success) {
-          currentUser = res.user;
-          document.getElementById('auth-layer').classList.add('workspace-hidden');
-          document.getElementById('main-app').classList.remove('hidden');
-          document.getElementById('user-info').innerText = currentUser.name;
-
-          applyPermissions(currentUser.permissions);
-
-          var pStr = String(currentUser.permissions || "");
-          if (pStr.includes('5')) openAdminWorkspace();
-          else if (pStr.includes('1')) openWorkspace('richmenu');
-          else if (pStr.includes('2')) openWorkspace('selector');
-          else if (pStr.includes('3')) openCalendarPop();
-          else if (pStr.includes('4')) openCaptureWorkspace();
-          else {
-            var ids = ['template-selector', 'menu-workspace', 'flex-workspace-v1', 'flex-workspace-v2', 'v3-workspace', 'v4-workspace', 'capture-workspace', 'admin-workspace'];
-            ids.forEach(id => { var el = document.getElementById(id); if(el) el.classList.add('workspace-hidden'); });
-          }
+          enterSystem(res.user);
         } else {
           alert(res.msg);
         }
@@ -3210,12 +3214,42 @@
       }
     }
 
+    function isLiffLaunch() {
+      var params = new URLSearchParams(location.search);
+      return !!(params.get("code") || params.get("state") || params.get("liff.state") || params.get("liffClientId"));
+    }
+
     async function ensureMyLittleSysLiffReady() {
       if (!window.liff) throw new Error("LIFF SDK 尚未載入，請重新整理後再試");
       if (!myLittleSysLiffReady) {
         myLittleSysLiffReady = liff.init({ liffId: getMyLittleSysLiffId() });
       }
       await myLittleSysLiffReady;
+    }
+
+    async function tryLineAdminLogin() {
+      if (currentUser || getIncomingShareId() || !window.liff) return;
+      try {
+        await ensureMyLittleSysLiffReady();
+        if (!liff.isLoggedIn()) {
+          if (isLiffLaunch() || (liff.isInClient && liff.isInClient())) {
+            liff.login({ redirectUri: window.location.href });
+          }
+          return;
+        }
+
+        var idToken = liff.getIDToken && liff.getIDToken();
+        if (!idToken) return;
+        toggleLoader(true);
+        var res = await callMyLittleSysRpc("loginLineAdmin", idToken);
+        toggleLoader(false);
+        if (res && res.success) {
+          enterSystem(res.user);
+        }
+      } catch (error) {
+        toggleLoader(false);
+        console.warn("LINE admin login skipped:", error);
+      }
     }
 
     async function shareCurrentFlexToLine(shareButton) {
@@ -3284,6 +3318,7 @@
     }
 
     setTimeout(shareStoredFlexFromUrl, 300);
+    setTimeout(tryLineAdminLogin, 500);
 
     document.getElementById("img-upload").onchange = function(e) {
       var f = e.target.files[0]; if(!f || !window.MenuModule) return;
