@@ -2514,11 +2514,61 @@
       .catch(onVoomFailure);
   }
 
+  function normalizeVoomData(data) {
+    const source = data && typeof data === 'object' ? data : {};
+    const mediaItems = []
+      .concat(Array.isArray(source.media) ? source.media : [])
+      .concat(Array.isArray(source.images) ? source.images : [])
+      .filter(Boolean);
+    if (source.video) mediaItems.unshift(source.video);
+
+    const seen = new Set();
+    const images = [];
+    let video = source.video || null;
+
+    mediaItems.forEach((item) => {
+      const url = item.videoUrl || item.url || item.src || '';
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+
+      if (isVoomVideoUrl(url)) {
+        if (!video) video = { videoUrl: url, thumbnailUrl: item.thumbnailUrl || '', width: item.width || '', height: item.height || '' };
+        return;
+      }
+
+      if (isVoomImageUrl(url)) {
+        images.push({ url: url, width: item.width || '', height: item.height || '' });
+      }
+    });
+
+    const type = video && images.length ? 'MIXED' : (video ? 'VIDEO' : (images.length ? 'IMAGE' : (source.type || 'UNKNOWN')));
+    return Object.assign({}, source, {
+      success: source.success !== false,
+      type: type,
+      video: video,
+      images: images,
+      media: mediaItems
+    });
+  }
+
+  function isVoomVideoUrl(url) {
+    return /(?:\.(?:mp4|mov)|\/(?:mp4|mov))(?:[?#].*)?$/i.test(String(url || ''));
+  }
+
+  function isVoomImageUrl(url) {
+    const value = String(url || '');
+    if (isVoomVideoUrl(value)) return false;
+    return /(?:\.(?:jpg|jpeg|png|gif|webp)|\/[fm]\d+x\d+)(?:[?#].*)?$/i.test(value)
+      || /^https?:\/\/voom-obs\.line-scdn\.net\//i.test(value);
+  }
+
   function onVoomSuccess(data) {
     document.getElementById('fetchVoomBtn').disabled = false;
     document.getElementById('voomLoadingSpinner').classList.add('hidden');
 
+    data = data && typeof data === 'object' ? data : { success: false, error: '回傳格式異常' };
     if (!data.success) { showVoomError('抓取失敗：' + (data.error || '未知錯誤')); return; }
+    data = normalizeVoomData(data);
 
     document.getElementById('voomResultContainer').classList.remove('hidden');
     document.getElementById('voomJsonOutput').textContent = JSON.stringify(data, null, 2);
