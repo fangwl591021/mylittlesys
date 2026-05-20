@@ -306,7 +306,8 @@ const rpcHandlers = {
       return buildMediaResponse([{ url: targetUrl }]);
     }
     const html = await fetchText(targetUrl);
-    return buildMediaResponse(extractMedia(html, targetUrl));
+    const structuredMedia = extractNextDataMedia(html);
+    return buildMediaResponse(structuredMedia.length ? structuredMedia : extractMedia(html, targetUrl));
   },
 
   extractMediaFromJsonData: async (_env, data) => extractMedia(JSON.stringify(data || {}), ""),
@@ -572,22 +573,77 @@ function extractMedia(text, baseUrl) {
   return media;
 }
 
+function extractNextDataMedia(html) {
+  const match = String(html || "").match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) return [];
+
+  let data;
+  try {
+    data = JSON.parse(decodeHtml(match[1]));
+  } catch {
+    return [];
+  }
+
+  const media = [];
+  const seen = new Set();
+  const visit = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+
+    if (Array.isArray(value.media)) {
+      value.media.forEach((item) => {
+        if (!item || typeof item !== "object" || !item.resourceId) return;
+        const baseUrl = `https://voom-obs.line-scdn.net/${item.resourceId}`;
+        const type = String(item.type || "").toUpperCase();
+        const entry = type === "VIDEO"
+          ? {
+              type: "VIDEO",
+              url: `${baseUrl}/mp4`,
+              videoUrl: `${baseUrl}/mp4`,
+              thumbnailUrl: `${baseUrl}/f480x640`,
+              width: item.width || "",
+              height: item.height || ""
+            }
+          : {
+              type: "IMAGE",
+              url: `${baseUrl}/f480x640`,
+              width: item.width || "",
+              height: item.height || ""
+            };
+        if (!seen.has(entry.url)) {
+          seen.add(entry.url);
+          media.push(entry);
+        }
+      });
+    }
+
+    Object.values(value).forEach(visit);
+  };
+
+  visit(data);
+  return media;
+}
+
 function buildMediaResponse(media) {
   const items = Array.isArray(media) ? media : [];
   const videos = items.filter((item) => isVideoUrl(item.url));
   const images = items.filter((item) => isImageUrl(item.url));
   const firstVideo = videos[0] || null;
   const firstImage = images[0] || null;
+  const responseImages = firstVideo ? [] : images;
   return {
     success: true,
-    type: firstVideo && images.length ? "MIXED" : (firstVideo ? "VIDEO" : (images.length ? "IMAGE" : "UNKNOWN")),
+    type: firstVideo ? "VIDEO" : (responseImages.length ? "IMAGE" : "UNKNOWN"),
     video: firstVideo ? {
-      videoUrl: firstVideo.url,
-      thumbnailUrl: firstImage?.url || "",
+      videoUrl: firstVideo.videoUrl || firstVideo.url,
+      thumbnailUrl: firstVideo.thumbnailUrl || firstImage?.url || "",
       width: firstVideo.width || "",
       height: firstVideo.height || ""
     } : null,
-    images: images.map((item) => ({
+    images: responseImages.map((item) => ({
       url: item.url,
       width: item.width || "",
       height: item.height || ""
@@ -601,10 +657,12 @@ function isMediaUrl(url) {
 }
 
 function isVideoUrl(url) {
+  if (typeof url === "object" && url) return String(url.type || "").toUpperCase() === "VIDEO" || isVideoUrl(url.url);
   return /(?:\.(?:mp4|mov)|\/(?:mp4|mov))(?:[?#].*)?$/i.test(String(url || ""));
 }
 
 function isImageUrl(url) {
+  if (typeof url === "object" && url) return String(url.type || "").toUpperCase() === "IMAGE" || isImageUrl(url.url);
   const value = String(url || "");
   if (isVideoUrl(value)) return false;
   return /(?:\.(?:jpg|jpeg|png|gif|webp)|\/[fm]\d+x\d+)(?:[?#].*)?$/i.test(value)
