@@ -2509,10 +2509,9 @@
     document.getElementById('voomImageSection').classList.add('hidden');
     document.getElementById('voomImageGrid').innerHTML = '';
 
-    google.script.run
-      .withSuccessHandler(onVoomSuccess)
-      .withFailureHandler(onVoomFailure)
-      .getLineVoomMedia(urlInput);
+    callMyLittleSysRpc("getLineVoomMedia", urlInput)
+      .then(onVoomSuccess)
+      .catch(onVoomFailure);
   }
 
   function onVoomSuccess(data) {

@@ -301,9 +301,12 @@ const rpcHandlers = {
   fetchMonthEvents: async () => [],
 
   getLineVoomMedia: async (_env, targetUrl) => {
-    if (!targetUrl) return { success: false, msg: "缺少網址" };
+    if (!targetUrl) return { success: false, msg: "????" };
+    if (isMediaUrl(targetUrl)) {
+      return buildMediaResponse([{ url: targetUrl }]);
+    }
     const html = await fetchText(targetUrl);
-    return { success: true, media: extractMedia(html, targetUrl) };
+    return buildMediaResponse(extractMedia(html, targetUrl));
   },
 
   extractMediaFromJsonData: async (_env, data) => extractMedia(JSON.stringify(data || {}), ""),
@@ -547,12 +550,17 @@ function extractMeta(html) {
 function extractMedia(text, baseUrl) {
   const media = [];
   const seen = new Set();
+  const source = String(text || "")
+    .replaceAll("\\/", "/")
+    .replaceAll("\\u002F", "/")
+    .replaceAll("\\u002f", "/")
+    .replaceAll("&amp;", "&");
   const patterns = [
-    /https?:\/\/[^"'\s<>]+?\.(?:jpg|jpeg|png|gif|webp|mp4|mov)(?:\?[^"'\s<>]*)?/gi,
+    /https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|gif|webp|mp4|mov)|\/(?:mp4|mov|m\d+x\d+))(?:\?[^"'\s<>]*)?/gi,
     /<meta\s+[^>]*(?:property|name)=["'](?:og:image|og:video|twitter:image)["'][^>]*content=["']([^"']+)["'][^>]*>/gi
   ];
   for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern)) {
+    for (const match of source.matchAll(pattern)) {
       const raw = match[1] || match[0];
       const url = absolutize(decodeHtml(raw), baseUrl);
       if (url && !seen.has(url)) {
@@ -562,6 +570,42 @@ function extractMedia(text, baseUrl) {
     }
   }
   return media;
+}
+
+function buildMediaResponse(media) {
+  const items = Array.isArray(media) ? media : [];
+  const videos = items.filter((item) => isVideoUrl(item.url));
+  const images = items.filter((item) => isImageUrl(item.url));
+  const firstVideo = videos[0] || null;
+  const firstImage = images[0] || null;
+  return {
+    success: true,
+    type: firstVideo && images.length ? "MIXED" : (firstVideo ? "VIDEO" : (images.length ? "IMAGE" : "UNKNOWN")),
+    video: firstVideo ? {
+      videoUrl: firstVideo.url,
+      thumbnailUrl: firstImage?.url || "",
+      width: firstVideo.width || "",
+      height: firstVideo.height || ""
+    } : null,
+    images: images.map((item) => ({
+      url: item.url,
+      width: item.width || "",
+      height: item.height || ""
+    })),
+    media: items
+  };
+}
+
+function isMediaUrl(url) {
+  return isVideoUrl(url) || isImageUrl(url);
+}
+
+function isVideoUrl(url) {
+  return /(?:\.(?:mp4|mov)|\/(?:mp4|mov))(?:[?#].*)?$/i.test(String(url || ""));
+}
+
+function isImageUrl(url) {
+  return /(?:\.(?:jpg|jpeg|png|gif|webp)|\/m\d+x\d+)(?:[?#].*)?$/i.test(String(url || ""));
 }
 
 function absolutize(value, baseUrl) {
