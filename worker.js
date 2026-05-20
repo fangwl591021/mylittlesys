@@ -556,7 +556,7 @@ function extractMedia(text, baseUrl) {
     .replaceAll("\\u002f", "/")
     .replaceAll("&amp;", "&");
   const patterns = [
-    /https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|gif|webp|mp4|mov)|\/(?:mp4|mov|m\d+x\d+))(?:\?[^"'\s<>]*)?/gi,
+    /https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|gif|webp|mp4|mov)|\/(?:mp4|mov|[fm]\d+x\d+))(?:\?[^"'\s<>]*)?/gi,
     /<meta\s+[^>]*(?:property|name)=["'](?:og:image|og:video|twitter:image)["'][^>]*content=["']([^"']+)["'][^>]*>/gi
   ];
   for (const pattern of patterns) {
@@ -605,7 +605,10 @@ function isVideoUrl(url) {
 }
 
 function isImageUrl(url) {
-  return /(?:\.(?:jpg|jpeg|png|gif|webp)|\/m\d+x\d+)(?:[?#].*)?$/i.test(String(url || ""));
+  const value = String(url || "");
+  if (isVideoUrl(value)) return false;
+  return /(?:\.(?:jpg|jpeg|png|gif|webp)|\/[fm]\d+x\d+)(?:[?#].*)?$/i.test(value)
+    || /^https?:\/\/voom-obs\.line-scdn\.net\//i.test(value);
 }
 
 function absolutize(value, baseUrl) {
