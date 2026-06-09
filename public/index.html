@@ -3567,7 +3567,14 @@
           var w = tempImg.width, h = tempImg.height;
           var calculatedHeight = Math.round((h / w) * 2500);
           if(window.MenuModule) {
-            window.MenuModule.load("New", JSON.stringify({size:{width:2500,height:calculatedHeight},areas:[], chatBarText: document.getElementById('rich-menu-chatbar').value}), localBase64);
+            var existingConfig = {};
+            try { existingConfig = JSON.parse(document.getElementById('json-output').value || "{}"); } catch(e) {}
+            existingConfig.size = { width: 2500, height: calculatedHeight };
+            existingConfig.selected = true;
+            existingConfig.name = document.getElementById('save-filename').value || existingConfig.name || "New Rich Menu";
+            existingConfig.chatBarText = document.getElementById('rich-menu-chatbar').value || existingConfig.chatBarText || "選單";
+            existingConfig.areas = Array.isArray(existingConfig.areas) ? existingConfig.areas : [];
+            window.MenuModule.load(existingConfig.name || "New", encodeURIComponent(JSON.stringify(existingConfig)), localBase64);
             window.MenuModule.isImageChanged = true;
           }
           google.script.run.withSuccessHandler(function(uploadRes) {
