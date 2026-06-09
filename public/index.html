@@ -300,13 +300,23 @@
 
 
      <div class="flex items-center space-x-2 pl-4 border-l-2 border-gray-200">
-       <button onclick="MenuModule.applyJsonFromText()" class="px-8 py-2.5 rounded-md text-sm font-bold text-slate-600 bg-white border-2 border-gray-300 transition-all hover:bg-gray-50">更新畫布</button>
+       <button onclick="MenuModule.applyJsonFromText()" class="px-8 py-2.5 rounded-md text-sm font-bold text-slate-600 bg-white border-2 border-gray-300 transition-all hover:bg-gray-50">套用 JSON</button>
        <button onclick="copyJsonText()" class="px-8 py-2.5 rounded-md text-sm font-black text-[#54C061] bg-green-50 border-2 border-[#54C061] transition-all hover:bg-green-100 uppercase">Copy JSON</button>
      </div>
   </div>
 
 
   <div class="p-10 flex flex-col items-center w-full">
+    <div class="w-full max-w-5xl bg-white border border-slate-200 rounded-xl shadow-sm p-5 mb-6">
+      <div class="flex items-center justify-between gap-4 mb-3">
+        <div>
+          <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">JSON 匯入生成圖文選單</h3>
+          <p class="text-xs font-bold text-slate-400 mt-1">貼上 LINE Rich Menu JSON 後套用，會依 areas 重新產生標註區。</p>
+        </div>
+        <button onclick="MenuModule.applyJsonFromText()" class="px-5 py-2 bg-slate-800 text-white rounded-md text-xs font-black hover:bg-slate-700 transition">套用 JSON</button>
+      </div>
+      <textarea id="menu-json-input" class="w-full min-h-[140px] border-2 border-slate-200 rounded-lg p-3 font-mono text-xs outline-none focus:border-[#54C061] resize-y" placeholder='貼上 JSON，例如 {"size":{"width":2500,"height":843},"areas":[...]}'></textarea>
+    </div>
     <div id="menu-canvas-container" class="bg-white p-4 rounded-2xl shadow-2xl border border-gray-200 inline-block overflow-hidden mb-8 relative">
       <canvas id="menu-canvas"></canvas>
     </div>
@@ -652,16 +662,30 @@
         this.updateOutput();
       },
 
-      // ★ 修正：隱藏文字框後，透過 prompt 視窗讓使用者貼上 JSON
       applyJsonFromText: function() {
-        var input = prompt("請貼上 JSON 原始碼以更新畫布：");
-        if (input) {
-          try {
-            var data = JSON.parse(input);
-            this.importAreas(data.areas || [], canvas.getWidth() / 2500);
-            document.getElementById('json-output').value = JSON.stringify(data, null, 2);
-            this.updateOutput();
-          } catch(e) { alert("JSON 格式有誤"); }
+        var inputEl = document.getElementById('menu-json-input');
+        var input = (inputEl && inputEl.value.trim()) || document.getElementById('json-output').value || "";
+        if (!input) { alert("請先貼上 JSON 原始碼"); return; }
+        try {
+          var data = JSON.parse(input);
+          if (data.size && Number(data.size.width) && Number(data.size.height)) {
+            currentImgHeight = Math.round(Number(data.size.height));
+            var displayWidth = canvas.getWidth() || 600;
+            var displayHeight = displayWidth * (currentImgHeight / Number(data.size.width));
+            canvas.setWidth(displayWidth);
+            canvas.setHeight(displayHeight);
+            if (canvas.backgroundImage) {
+              canvas.backgroundImage.scaleX = displayWidth / canvas.backgroundImage.width;
+              canvas.backgroundImage.scaleY = displayHeight / canvas.backgroundImage.height;
+            }
+          }
+          if (document.getElementById('rich-menu-chatbar') && data.chatBarText) document.getElementById('rich-menu-chatbar').value = data.chatBarText;
+          if (document.getElementById('save-filename') && data.name) document.getElementById('save-filename').value = data.name;
+          document.getElementById('json-output').value = JSON.stringify(data, null, 2);
+          if (inputEl) inputEl.value = JSON.stringify(data, null, 2);
+          this.importAreas(Array.isArray(data.areas) ? data.areas : [], canvas.getWidth() / 2500);
+        } catch(e) {
+          alert("JSON 格式有誤：" + e.message);
         }
       }
     };
