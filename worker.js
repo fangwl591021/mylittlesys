@@ -323,16 +323,18 @@ async function saveProject(env, sheet, data = {}) {
 
   const projects = await getProjects(env, sheet);
   const now = new Date().toISOString();
+  const index = projects.findIndex((item) => item.username === data.username && item.filename === data.filename);
+  const existing = index >= 0 ? projects[index] : {};
   const record = {
     sheet,
     username: data.username,
     company: data.company || "",
     filename: data.filename,
     json: data.json || "{}",
-    image: data.image || "",
+    image: data.image || existing.image || "",
+    token: sheet === "richmenu" ? (data.token || existing.token || "") : "",
     time: now
   };
-  const index = projects.findIndex((item) => item.username === record.username && item.filename === record.filename);
   if (index >= 0) projects[index] = { ...projects[index], ...record };
   else projects.unshift(record);
 

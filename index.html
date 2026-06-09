@@ -3217,6 +3217,7 @@
           window.MenuModule.isImageChanged = false;
           lastUploadedBase64 = "";
           document.getElementById('rich-menu-chatbar').value = "選單";
+          document.getElementById('rich-menu-token').value = "";
         }
       } else {
         openWorkspace('selector');
@@ -3274,6 +3275,7 @@
              window.MenuModule.load(f.filename, encodeURIComponent(f.json), b64);
              var config = JSON.parse(f.json);
              document.getElementById('rich-menu-chatbar').value = config.chatBarText || "選單";
+             document.getElementById('rich-menu-token').value = f.token || "";
           }
         }).getMenuImageBase64(f.image);
       } else {
@@ -3305,7 +3307,14 @@
       }
 
       toggleLoader(true);
-      var data = { username: currentUser.username, company: "Company", filename: name, json: jsonText, image: (currentWorkspace === "richmenu" && window.MenuModule.isImageChanged) ? window.MenuModule.currentDriveUrl : "" };
+      var data = {
+        username: currentUser.username,
+        company: "Company",
+        filename: name,
+        json: jsonText,
+        image: (currentWorkspace === "richmenu" && window.MenuModule.isImageChanged) ? window.MenuModule.currentDriveUrl : ""
+      };
+      if (currentWorkspace === "richmenu") data.token = document.getElementById('rich-menu-token').value || "";
       google.script.run.withSuccessHandler(function(res) {
         toggleLoader(false); if(res.success) { showToast("儲存成功"); renderProjectList(currentCat); } else alert(res.msg);
       })[currentWorkspace === "richmenu" ? "saveRichMenu" : (currentWorkspace === "v1" ? "saveFlexV1" : (currentWorkspace === "v3" ? "saveFlexV3" : (currentWorkspace === "v4" ? "saveFlexV4" : "saveFlexV2")))](data);
