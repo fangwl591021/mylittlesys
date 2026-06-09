@@ -307,7 +307,13 @@
 
 
   <div class="p-10 flex flex-col items-center w-full">
-    <div class="w-full max-w-5xl bg-white border border-slate-200 rounded-xl shadow-sm p-5 mb-6">
+    <div id="menu-canvas-container" class="bg-white p-4 rounded-2xl shadow-2xl border border-gray-200 inline-block overflow-hidden mb-8 relative">
+      <canvas id="menu-canvas"></canvas>
+    </div>
+    <div class="flex items-center space-x-4 bg-slate-200/50 px-5 py-2 rounded-full">
+      <span class="text-xs font-bold text-slate-500 tracking-widest">操作提示: 點擊按鈕畫框 / 點擊畫布上的框可調整大小 / 按 Delete 鍵可刪除</span>
+    </div>
+    <div class="w-full max-w-5xl bg-white border border-slate-200 rounded-xl shadow-sm p-5 mt-8">
       <div class="flex items-center justify-between gap-4 mb-3">
         <div>
           <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">JSON 匯入生成圖文選單</h3>
@@ -316,12 +322,6 @@
         <button onclick="MenuModule.applyJsonFromText()" class="px-5 py-2 bg-slate-800 text-white rounded-md text-xs font-black hover:bg-slate-700 transition">套用 JSON</button>
       </div>
       <textarea id="menu-json-input" class="w-full min-h-[140px] border-2 border-slate-200 rounded-lg p-3 font-mono text-xs outline-none focus:border-[#54C061] resize-y" placeholder='貼上 JSON，例如 {"size":{"width":2500,"height":843},"areas":[...]}'></textarea>
-    </div>
-    <div id="menu-canvas-container" class="bg-white p-4 rounded-2xl shadow-2xl border border-gray-200 inline-block overflow-hidden mb-8 relative">
-      <canvas id="menu-canvas"></canvas>
-    </div>
-    <div class="flex items-center space-x-4 bg-slate-200/50 px-5 py-2 rounded-full">
-      <span class="text-xs font-bold text-slate-500 tracking-widest">操作提示: 點擊按鈕畫框 / 點擊畫布上的框可調整大小 / 按 Delete 鍵可刪除</span>
     </div>
   </div>
 </div>
