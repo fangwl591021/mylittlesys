@@ -87,7 +87,10 @@ const rpcHandlers = {
     if (!username || !password) return { success: false, msg: "請輸入帳號與密碼" };
 
     const users = await getUsers(env);
-    const user = users.find((item) => item.username === username && item.password === password);
+    const user = users.find((item) => {
+      const account = String(item.username || item.account || "").trim();
+      return account === username && String(item.password || "") === password;
+    });
     if (!user) {
       const canBootstrap = await canBootstrapAdmin(env, users);
       if (!canBootstrap) return { success: false, msg: "帳號或密碼錯誤" };
@@ -258,13 +261,7 @@ const rpcHandlers = {
   publishRichMenuToLine: async (_env, token, jsonText, imageBase64) => {
     if (!token) return { success: false, msg: "缺少 LINE Channel Access Token" };
     const config = JSON.parse(jsonText);
-    const lineBody = {
-      size: config.size,
-      selected: true,
-      name: config.name || config.chatBarText || "Rich Menu",
-      chatBarText: config.chatBarText || "選單",
-      areas: Array.isArray(config.areas) ? config.areas : []
-    };
+    const lineBody = sanitizeRichMenuForLine(config);
 
     const createRes = await fetch("https://api.line.me/v2/bot/richmenu", {
       method: "POST",
@@ -318,6 +315,40 @@ const rpcHandlers = {
   }
 };
 
+function sanitizeRichMenuForLine(config = {}) {
+  const width = Math.max(1, Math.round(Number(config.size?.width) || 2500));
+  const height = Math.max(1, Math.round(Number(config.size?.height) || 843));
+  const areas = (Array.isArray(config.areas) ? config.areas : [])
+    .map((area) => sanitizeRichMenuArea(area, width, height))
+    .filter(Boolean);
+
+  return {
+    size: { width, height },
+    selected: true,
+    name: config.name || config.chatBarText || "Rich Menu",
+    chatBarText: config.chatBarText || "選單",
+    areas
+  };
+}
+
+function sanitizeRichMenuArea(area, menuWidth, menuHeight) {
+  if (!area || !area.bounds || !area.action) return null;
+  const source = area.bounds;
+  const x = clampInt(source.x, 0, menuWidth - 1);
+  const y = clampInt(source.y, 0, menuHeight - 1);
+  const maxWidth = menuWidth - x;
+  const maxHeight = menuHeight - y;
+  const width = clampInt(source.width, 1, maxWidth);
+  const height = clampInt(source.height, 1, maxHeight);
+  if (width < 1 || height < 1) return null;
+  return { bounds: { x, y, width, height }, action: area.action };
+}
+
+function clampInt(value, min, max) {
+  const number = Math.round(Number(value));
+  if (!Number.isFinite(number)) return min;
+  return Math.min(Math.max(number, min), max);
+}
 async function saveProject(env, sheet, data = {}) {
   if (!data.username || !data.filename) return { success: false, msg: "缺少 username 或 filename" };
 
@@ -372,7 +403,7 @@ async function getUsers(env) {
   const configuredUser = env.ADMIN_USER || "admin";
   const configuredPass = env.ADMIN_PASS || "admin123";
   const users = await getRecord(env, "users", null);
-  if (users) return users;
+  if (Array.isArray(users)) return users.map(normalizeUser);
   return [
     normalizeUser({
       username: configuredUser,
@@ -430,7 +461,7 @@ function normalizeUser(user) {
   return {
     username: account,
     account,
-    password: String(user.password || ""),
+    password: String(user.password || user.pass || ""),
     name: String(user.name || user.username || ""),
     company: String(user.company || ""),
     phone: String(user.phone || ""),
