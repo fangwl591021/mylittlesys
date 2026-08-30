@@ -286,6 +286,14 @@ const rpcHandlers = {
     });
     if (!uploadRes.ok) return { success: false, msg: await uploadRes.text(), richMenuId: created.richMenuId };
 
+    const unlinkRes = await fetch("https://api.line.me/v2/bot/user/all/richmenu", {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` }
+    });
+    if (!unlinkRes.ok && unlinkRes.status !== 404) {
+      return { success: false, msg: await unlinkRes.text(), richMenuId: created.richMenuId };
+    }
+
     const defaultRes = await fetch(`https://api.line.me/v2/bot/user/all/richmenu/${created.richMenuId}`, {
       method: "POST",
       headers: { authorization: `Bearer ${token}` }
