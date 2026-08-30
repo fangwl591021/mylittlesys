@@ -299,6 +299,10 @@
      <button onclick="MenuModule.toggleDrawMode()" id="menu-draw-btn" class="px-10 py-2.5 rounded-md text-sm font-black bg-slate-800 text-white shadow-md transition-all hover:bg-slate-700">開始劃定區域</button>
      <button onclick="MenuModule.clearAreas()" class="px-6 py-2.5 rounded-md text-sm font-bold text-rose-500 bg-white border-2 border-rose-100 transition-all hover:bg-rose-50">清空區域</button>
 
+     <div class="flex items-center space-x-2 pl-4 border-l-2 border-gray-200">
+       <button onclick="doCheckRichMenuStatus()" class="px-6 py-2.5 rounded-md text-sm font-bold text-sky-700 bg-sky-50 border-2 border-sky-200 transition-all hover:bg-sky-100">查詢狀態</button>
+       <button onclick="doDisableRichMenu()" class="px-6 py-2.5 rounded-md text-sm font-bold text-rose-600 bg-white border-2 border-rose-200 transition-all hover:bg-rose-50">停用目前選單</button>
+     </div>
 
      <div class="flex items-center space-x-2 pl-4 border-l-2 border-gray-200">
        <button onclick="MenuModule.applyJsonFromText()" class="px-8 py-2.5 rounded-md text-sm font-bold text-slate-600 bg-white border-2 border-gray-300 transition-all hover:bg-gray-50">套用 JSON</button>
@@ -3360,6 +3364,21 @@
           alert("停用失敗：" + (res.msg || "無法確認目前預設選單已清除"));
         }
       }).disableDefaultRichMenu(token);
+    }
+
+    function doCheckRichMenuStatus() {
+      var token = document.getElementById('rich-menu-token').value;
+      if (!token) return alert("請先填寫 Channel Access Token");
+
+      toggleLoader(true);
+      google.script.run.withSuccessHandler(function(res) {
+        toggleLoader(false);
+        if (res.success) {
+          alert(res.activeRichMenuId ? "目前預設圖文選單 ID:\n" + res.activeRichMenuId : "目前沒有預設圖文選單");
+        } else {
+          alert("查詢失敗：" + (res.msg || "無法查詢目前預設選單"));
+        }
+      }).getDefaultRichMenuStatus(token);
     }
 
     function copyJsonText() {

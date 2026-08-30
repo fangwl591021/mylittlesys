@@ -350,6 +350,20 @@ const rpcHandlers = {
     };
   },
 
+  getDefaultRichMenuStatus: async (_env, token) => {
+    if (!token) return { success: false, msg: "缺少 LINE Channel Access Token" };
+    try {
+      const activeRichMenuId = await getDefaultRichMenuId(token);
+      return {
+        success: true,
+        enabled: !!activeRichMenuId,
+        activeRichMenuId: activeRichMenuId || ""
+      };
+    } catch (error) {
+      return { success: false, msg: `查詢目前預設選單失敗：${error.message || String(error)}` };
+    }
+  },
+
   fetchMonthEvents: async () => [],
 
   getLineVoomMedia: async (_env, targetUrl) => {
