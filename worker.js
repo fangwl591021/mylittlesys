@@ -262,6 +262,12 @@ const rpcHandlers = {
     if (!token) return { success: false, msg: "缺少 LINE Channel Access Token" };
     const config = JSON.parse(jsonText);
     const lineBody = sanitizeRichMenuForLine(config);
+    let previousDefault = "";
+    try {
+      previousDefault = await getDefaultRichMenuId(token);
+    } catch (error) {
+      return { success: false, msg: `查詢目前預設選單失敗：${error.message || String(error)}` };
+    }
 
     const createRes = await fetch("https://api.line.me/v2/bot/richmenu", {
       method: "POST",
@@ -300,7 +306,48 @@ const rpcHandlers = {
     });
     if (!defaultRes.ok) return { success: false, msg: await defaultRes.text(), richMenuId: created.richMenuId };
 
-    return { success: true, richMenuId: created.richMenuId };
+    const activeRichMenuId = await verifyDefaultRichMenuId(token, created.richMenuId);
+    if (activeRichMenuId !== created.richMenuId) {
+      return {
+        success: false,
+        msg: `LINE 已接受啟用請求，但驗證目前預設選單失敗。目前預設：${activeRichMenuId || "無"}`,
+        richMenuId: created.richMenuId,
+        previousDefaultRichMenuId: previousDefault || "",
+        activeRichMenuId: activeRichMenuId || ""
+      };
+    }
+
+    return {
+      success: true,
+      richMenuId: created.richMenuId,
+      previousDefaultRichMenuId: previousDefault || "",
+      activeRichMenuId
+    };
+  },
+
+  disableDefaultRichMenu: async (_env, token) => {
+    if (!token) return { success: false, msg: "缺少 LINE Channel Access Token" };
+    let previousDefault = "";
+    try {
+      previousDefault = await getDefaultRichMenuId(token);
+    } catch (error) {
+      return { success: false, msg: `查詢目前預設選單失敗：${error.message || String(error)}` };
+    }
+    const unlinkRes = await fetch("https://api.line.me/v2/bot/user/all/richmenu", {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` }
+    });
+    if (!unlinkRes.ok && unlinkRes.status !== 404) {
+      return { success: false, msg: await unlinkRes.text(), previousDefaultRichMenuId: previousDefault || "" };
+    }
+
+    const activeRichMenuId = await verifyDefaultRichMenuId(token, "");
+    return {
+      success: !activeRichMenuId,
+      msg: activeRichMenuId ? `停用請求已送出，但目前仍查到預設選單：${activeRichMenuId}` : "",
+      previousDefaultRichMenuId: previousDefault || "",
+      activeRichMenuId: activeRichMenuId || ""
+    };
   },
 
   fetchMonthEvents: async () => [],
@@ -337,6 +384,32 @@ function sanitizeRichMenuForLine(config = {}) {
     chatBarText: config.chatBarText || "選單",
     areas
   };
+}
+
+async function getDefaultRichMenuId(token) {
+  const res = await fetch("https://api.line.me/v2/bot/user/all/richmenu", {
+    method: "GET",
+    headers: { authorization: `Bearer ${token}` }
+  });
+  const text = await res.text();
+  if (res.status === 404) return "";
+  if (!res.ok) throw new Error(text || `Get default rich menu failed: ${res.status}`);
+  const data = JSON.parse(text || "{}");
+  return data.richMenuId || "";
+}
+
+async function verifyDefaultRichMenuId(token, expectedRichMenuId) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const activeRichMenuId = await getDefaultRichMenuId(token);
+    if (activeRichMenuId === expectedRichMenuId) return activeRichMenuId;
+    if (!expectedRichMenuId && !activeRichMenuId) return "";
+    await sleep(500);
+  }
+  return getDefaultRichMenuId(token);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function sanitizeRichMenuArea(area, menuWidth, menuHeight) {

@@ -182,6 +182,7 @@
           <div class="flex space-x-3 ml-2">
             <button onclick="document.getElementById('img-upload').click()" class="px-4 py-2 border-2 border-gray-300 rounded-md text-xs font-bold text-slate-600 hover:bg-gray-50 transition-all uppercase whitespace-nowrap">選擇圖片</button>
             <button onclick="doSaveMenu()" class="px-5 py-2 bg-slate-100 text-slate-700 rounded-md text-xs font-bold uppercase hover:bg-slate-200 transition-all whitespace-nowrap">儲存專案</button>
+            <button onclick="doDisableRichMenu()" class="px-5 py-2 bg-white text-rose-600 border-2 border-rose-200 rounded-md text-xs font-black uppercase hover:bg-rose-50 transition-all whitespace-nowrap">停用選單</button>
             <button onclick="doUploadRichMenu()" class="px-6 py-2 bg-[#54C061] text-white rounded-md text-xs font-black uppercase shadow-md hover:bg-green-600 transition-all whitespace-nowrap">上傳並生效</button>
           </div>
           <input type="file" id="img-upload" class="hidden" accept="image/*">
@@ -3338,9 +3339,27 @@
       toggleLoader(true);
       google.script.run.withSuccessHandler(function(res) {
         toggleLoader(false);
-        if (res.success) showToast("發布成功！ID: " + res.richMenuId);
+        if (res.success) {
+          alert("發布成功，且已驗證目前預設選單已切換。\n新選單 ID: " + res.richMenuId + "\n目前預設 ID: " + res.activeRichMenuId + (res.previousDefaultRichMenuId ? "\n原預設 ID: " + res.previousDefaultRichMenuId : ""));
+        }
         else alert("失敗：" + res.msg);
       }).publishRichMenuToLine(token, jsonText, lastUploadedBase64);
+    }
+
+    function doDisableRichMenu() {
+      var token = document.getElementById('rich-menu-token').value;
+      if (!token) return alert("請先填寫 Channel Access Token");
+      if (!confirm("確定要停用目前官方帳號的預設圖文選單嗎？")) return;
+
+      toggleLoader(true);
+      google.script.run.withSuccessHandler(function(res) {
+        toggleLoader(false);
+        if (res.success) {
+          alert("停用成功，已驗證目前沒有預設圖文選單。" + (res.previousDefaultRichMenuId ? "\n原預設 ID: " + res.previousDefaultRichMenuId : ""));
+        } else {
+          alert("停用失敗：" + (res.msg || "無法確認目前預設選單已清除"));
+        }
+      }).disableDefaultRichMenu(token);
     }
 
     function copyJsonText() {
