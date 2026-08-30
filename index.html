@@ -3344,7 +3344,7 @@
       google.script.run.withSuccessHandler(function(res) {
         toggleLoader(false);
         if (res.success) {
-          alert("發布成功，且已驗證目前預設選單已切換。\n新選單 ID: " + res.richMenuId + "\n目前預設 ID: " + res.activeRichMenuId + (res.previousDefaultRichMenuId ? "\n原預設 ID: " + res.previousDefaultRichMenuId : ""));
+          alert("發布成功，且已驗證目前預設選單已切換。\n新選單 ID: " + res.richMenuId + "\n目前預設 ID: " + res.activeRichMenuId + (res.previousDefaultRichMenuId ? "\n原預設 ID: " + res.previousDefaultRichMenuId + (res.previousDeleted ? "\n原預設已刪除" : (res.previousDeleteError ? "\n原預設刪除失敗：" + res.previousDeleteError : "")) : ""));
         }
         else alert("失敗：" + res.msg);
       }).publishRichMenuToLine(token, jsonText, lastUploadedBase64);
@@ -3359,7 +3359,7 @@
       google.script.run.withSuccessHandler(function(res) {
         toggleLoader(false);
         if (res.success) {
-          alert("停用成功，已驗證目前沒有預設圖文選單。" + (res.previousDefaultRichMenuId ? "\n原預設 ID: " + res.previousDefaultRichMenuId : ""));
+          alert("停用成功，已驗證目前沒有預設圖文選單。" + (res.previousDefaultRichMenuId ? "\n原預設 ID: " + res.previousDefaultRichMenuId + (res.previousDeleted ? "\n原預設已刪除" : "") : ""));
         } else {
           alert("停用失敗：" + (res.msg || "無法確認目前預設選單已清除"));
         }

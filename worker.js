@@ -317,11 +317,17 @@ const rpcHandlers = {
       };
     }
 
+    const previousDelete = previousDefault && previousDefault !== created.richMenuId
+      ? await deleteRichMenu(token, previousDefault)
+      : { deleted: false, skipped: true };
+
     return {
       success: true,
       richMenuId: created.richMenuId,
       previousDefaultRichMenuId: previousDefault || "",
-      activeRichMenuId
+      activeRichMenuId,
+      previousDeleted: !!previousDelete.deleted,
+      previousDeleteError: previousDelete.error || ""
     };
   },
 
@@ -342,11 +348,18 @@ const rpcHandlers = {
     }
 
     const activeRichMenuId = await verifyDefaultRichMenuId(token, "");
+    const previousDelete = previousDefault && !activeRichMenuId
+      ? await deleteRichMenu(token, previousDefault)
+      : { deleted: false, skipped: true };
     return {
-      success: !activeRichMenuId,
-      msg: activeRichMenuId ? `停用請求已送出，但目前仍查到預設選單：${activeRichMenuId}` : "",
+      success: !activeRichMenuId && !previousDelete.error,
+      msg: activeRichMenuId
+        ? `停用請求已送出，但目前仍查到預設選單：${activeRichMenuId}`
+        : (previousDelete.error ? `預設已停用，但刪除舊選單失敗：${previousDelete.error}` : ""),
       previousDefaultRichMenuId: previousDefault || "",
-      activeRichMenuId: activeRichMenuId || ""
+      activeRichMenuId: activeRichMenuId || "",
+      previousDeleted: !!previousDelete.deleted,
+      previousDeleteError: previousDelete.error || ""
     };
   },
 
@@ -420,6 +433,17 @@ async function verifyDefaultRichMenuId(token, expectedRichMenuId) {
     await sleep(500);
   }
   return getDefaultRichMenuId(token);
+}
+
+async function deleteRichMenu(token, richMenuId) {
+  if (!richMenuId) return { deleted: false, skipped: true };
+  const res = await fetch(`https://api.line.me/v2/bot/richmenu/${encodeURIComponent(richMenuId)}`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${token}` }
+  });
+  const text = await res.text();
+  if (res.ok || res.status === 404) return { deleted: true };
+  return { deleted: false, error: text || `Delete rich menu failed: ${res.status}` };
 }
 
 function sleep(ms) {
